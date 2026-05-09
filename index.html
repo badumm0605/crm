@@ -69,16 +69,19 @@
                     <input type="text" id="orderAddress" class="form-control fw-bold" placeholder="ул. Ленина 1, кв 2">
                 </div>
                 
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label class="form-label text-muted small mb-1">Имя клиента</label>
-                        <input type="text" id="orderClient" class="form-control" placeholder="Иван">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label text-muted small mb-1">Телефон</label>
-                        <input type="tel" id="orderPhone" class="form-control" placeholder="8999...">
-                    </div>
-                </div>
+                <div class="row g-2 mb-3 position-relative">
+    <div class="col-6">
+        <label class="form-label text-muted small mb-1">Имя клиента</label>
+        <input type="text" id="orderClient" class="form-control" placeholder="Иван" autocomplete="off" oninput="handleContactSearch(this.value)">
+    </div>
+    <div class="col-6">
+        <label class="form-label text-muted small mb-1">Телефон</label>
+        <input type="tel" id="orderPhone" class="form-control" placeholder="8999..." autocomplete="off" oninput="handleContactSearch(this.value)">
+    </div>
+    
+    <ul id="contactSuggestions" class="dropdown-menu w-100 shadow-lg border-0" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 200px; overflow-y: auto;">
+        </ul>
+</div>
 
                 <div class="mb-3">
                     <label class="form-label text-muted small mb-1">Описание поломки / работ</label>
@@ -314,7 +317,60 @@
             loadOrders();
         }
     }
+// Функция поиска контактов (вызывается при вводе в любое из двух полей)
+function handleContactSearch(query) {
+    const dropdown = document.getElementById('contactSuggestions');
+    
+    // Ищем, только если введено 2+ символа
+    if (!query || query.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+    }
 
+    if (window.Android && window.Android.searchContacts) {
+        const jsonResult = window.Android.searchContacts(query);
+        const contacts = JSON.parse(jsonResult);
+
+        if (contacts.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        dropdown.innerHTML = ''; // Очищаем старые результаты
+        
+        contacts.forEach(c => {
+            const safeName = c.name.replace(/'/g, "\\'"); // экранирование для JS
+            const safePhone = c.phone.replace(/'/g, "\\'");
+            
+            dropdown.innerHTML += `
+                <li>
+                    <a class="dropdown-item py-2" href="#" onclick="selectContact('${safeName}', '${safePhone}'); return false;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-truncate" style="max-width: 60%;">${c.name}</span>
+                            <span class="small text-muted">${c.phone}</span>
+                        </div>
+                    </a>
+                </li>
+            `;
+        });
+        
+        dropdown.style.display = 'block'; // Показываем список
+    }
+}
+
+// Выбор контакта из списка
+function selectContact(name, phone) {
+    document.getElementById('orderClient').value = name;
+    document.getElementById('orderPhone').value = phone;
+    document.getElementById('contactSuggestions').style.display = 'none';
+}
+
+// Скрываем список, если кликнули в любое другое место
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#contactSuggestions') && !e.target.closest('#orderClient') && !e.target.closest('#orderPhone')) {
+        document.getElementById('contactSuggestions').style.display = 'none';
+    }
+});
     window.addEventListener('DOMContentLoaded', initDb);
 </script>
 </body>
