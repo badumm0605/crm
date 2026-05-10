@@ -321,13 +321,29 @@
 }
 
     function deleteOrder() {
-        const orderId = document.getElementById('orderId').value;
-        if (confirm("Удалить заказ навсегда? (Транзакции в финансах удалены не будут)")) {
-            window.Android.executeSql(DB_NAME, `DELETE FROM orders WHERE id=${orderId}`);
-            orderModal.hide();
-            loadOrders();
+    const orderId = document.getElementById('orderId').value;
+    
+    if (!orderId) return;
+
+    if (confirm("Вы уверены? Будет удален и сам заказ, и все связанные с ним записи в истории финансов.")) {
+        // 1. Удаляем связанные транзакции в таблице финансов по уникальной метке заказа
+        window.Android.executeSql(DB_NAME, `
+            DELETE FROM transactions 
+            WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'
+        `);
+
+        // 2. Удаляем сам заказ из таблицы заказов
+        window.Android.executeSql(DB_NAME, `DELETE FROM orders WHERE id=${orderId}`);
+
+        // Закрываем модальное окно и обновляем список
+        orderModal.hide();
+        loadOrders();
+        
+        if (window.Android && window.Android.log) {
+            window.Android.log("CRM: Заказ " + orderId + " и его транзакции полностью удалены");
         }
     }
+}
 // Функция поиска контактов (вызывается при вводе в любое из двух полей)
 function handleContactSearch(query) {
     const dropdown = document.getElementById('contactSuggestions');
