@@ -199,175 +199,70 @@
 <script src="file:///android_asset/js/bootstrap.bundle.min.js"></script>
     <script src="streets.js"></script>
 <script>
-    const DB_NAME = "finance_bus.db"; // ТА ЖЕ БАЗА ДАННЫХ
-    const orderModal = new bootstrap.Modal(document.getElementById('orderModal'));
+ const DB_NAME = "finance_bus.db";
+const orderModal = new bootstrap.Modal(document.getElementById('orderModal'));
 
+// === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
+let allOrders = [];
+let currentViewedOrder = null;
+let currentFilter = 'active'; // 'active' или 'completed'
+let currentOffset = 0;        
+const LOAD_LIMIT = 20;        
+let isLoading = false;        
+let hasMoreData = true;       
 
 // === ПЕРЕХВАТ АППАРАТНОЙ КНОПКИ НАЗАД ===
-
-// Ловим событие системной кнопки Назад (или вызов history.back())
 window.addEventListener('popstate', function(event) {
-    const state = event.state; // Читаем метку, которую мы оставили
-
-    // 1. Если открыта модалка заказа - принудительно закрываем ее
+    const state = event.state;
     if (document.getElementById('orderModal').classList.contains('show')) {
         orderModal.hide();
     }
-
-    // 2. Управляем видимостью экранов
     if (!state || !state.page) {
-        // Истории нет (корень) - показываем Главный экран
         document.getElementById('detailScreen').classList.add('d-none');
         document.getElementById('mainScreen').classList.remove('d-none');
         currentViewedOrder = null;
     } else if (state.page === 'detail') {
-        // Мы отмотали назад из модалки на экран деталей - показываем его
         document.getElementById('mainScreen').classList.add('d-none');
         document.getElementById('detailScreen').classList.remove('d-none');
     }
 });
 
-// Отлавливаем ситуацию, когда модалку закрыли НЕ кнопкой "Назад" 
-// (например, кликнули по темному фону или нажали крестик). 
-// Нам нужно "подчистить" историю, чтобы кнопка Назад не сработала вхолостую в будущем.
 document.getElementById('orderModal').addEventListener('hide.bs.modal', function (event) {
     if (history.state && history.state.page === 'modal') {
         history.back();
     }
 });
 
-
-    function initDb() {
-        if (!window.Android || !window.Android.executeSql) {
-            console.error("Android Bridge недоступен.");
-            return;
-        }
-
-        // Создаем таблицу заказов (если еще нет)
-        window.Android.executeSql(DB_NAME, `
-            CREATE TABLE IF NOT EXISTS orders (
-                id INTEGER PRIMARY KEY, /* Задаем вручную Date.now() для связки */
-                address TEXT,
-                client_name TEXT,
-                phone TEXT,
-                description TEXT,
-                total_sum REAL,
-                parts_sum REAL,
-                net_sum REAL,
-                timestamp INTEGER,
-                is_completed INTEGER DEFAULT 0
-            )
-        `);
-        
-        // Гарантируем, что таблица транзакций существует (на случай если CRM открыли первой)
-        window.Android.executeSql(DB_NAME, `
-            CREATE TABLE IF NOT EXISTS transactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, amount REAL, 
-                category TEXT, note TEXT, timestamp INTEGER, source_app TEXT DEFAULT 'finance'
-            )
-        `);
-
-        loadOrders();
+// === ИНИЦИАЛИЗАЦИЯ БД ===
+function initDb() {
+    if (!window.Android || !window.Android.executeSql) {
+        console.error("Android Bridge недоступен.");
+        return;
     }
 
-let allOrders = []; // Глобальный массив заказов
-let currentViewedOrder = null; // Текущий открытый заказ
-
-   // Загрузка
-// Загрузка (ОПТИМИЗИРОВАННАЯ для больших данных)
-
-
-// === ФУНКЦИИ ТЕСТИРОВАНИЯ ===
-
-function generateTestData() {
-    if (!confirm("Это добавит 10 000 записей в базу. Процесс займет пару секунд. Продолжить?")) return;
+    window.Android.executeSql(DB_NAME, `
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY, address TEXT, client_name TEXT, phone TEXT,
+            description TEXT, total_sum REAL, parts_sum REAL, net_sum REAL,
+            timestamp INTEGER, is_completed INTEGER DEFAULT 0
+        )
+    `);
     
-    const btn = document.getElementById('btnGenerate');
-    btn.disabled = true;
-    btn.innerText = "Идет генерация...";
+    window.Android.executeSql(DB_NAME, `
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, amount REAL, 
+            category TEXT, note TEXT, timestamp INTEGER, source_app TEXT DEFAULT 'finance'
+        )
+    `);
 
-    const names = ["Александр", "Елена", "Максим", "Ольга", "Иван", "Анна", "Сергей", "Наталья"];
-    let totalInserted = 0;
-    const totalToInsert = 10000;
-    const batchSize = 500; // Вставляем по 500 за раз
-    
-    // Используем рекурсивный таймаут, чтобы не повесить UI-поток
-    function insertBatch() {
-        let sql = "INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, is_completed) VALUES ";
-        let values = [];
-        
-        for (let i = 0; i < batchSize; i++) {
-            const id = Date.now() + totalInserted + i;
-            // Берем случайную улицу из нашей базы streets.js
-            const street = (typeof SARATOV_STREETS !== 'undefined' && SARATOV_STREETS.length > 0) 
-                ? SARATOV_STREETS[Math.floor(Math.random() * SARATOV_STREETS.length)] 
-                : "ул. Тестовая";
-            const address = street + ", д. " + Math.floor(Math.random() * 150 + 1);
-            const name = names[Math.floor(Math.random() * names.length)];
-            const phone = "89" + Math.floor(100000000 + Math.random() * 900000000); // Случайный номер
-            
-            // Финансы
-            const total = Math.floor(Math.random() * 50) * 100 + 1000; // От 1000 до 6000
-            const parts = Math.floor(Math.random() * 15) * 100; // До 1500
-            const net = total - parts;
-            
-            const isCompleted = Math.random() > 0.4 ? 1 : 0; // 60% выполненных
-            const ts = Date.now() - Math.floor(Math.random() * 10000000000); // Случайная дата в прошлом
-            
-            values.push(`(${id}, '${address}', '${name}', '${phone}', 'Тестовый заказ генерации', ${total}, ${parts}, ${net}, ${ts}, ${isCompleted})`);
-        }
-        
-        window.Android.executeSql(DB_NAME, sql + values.join(", "));
-        totalInserted += batchSize;
-        
-        if (totalInserted < totalToInsert) {
-            btn.innerText = `Добавлено: ${totalInserted} / 10000`;
-            setTimeout(insertBatch, 20); // Запускаем следующую пачку
-        } else {
-            btn.disabled = false;
-            btn.innerText = "Сгенерировать 10 000 заказов";
-            alert("Успешно добавлено 10 000 заказов!");
-            loadOrders();
-        }
-    }
-    
-    insertBatch();
+    loadOrders(true);
 }
-
-function clearDatabase() {
-    if (!confirm("ВНИМАНИЕ! Это навсегда удалит ВСЕ заказы и связанные с ними транзакции в финансах. Вы уверены?")) return;
-    if (!confirm("Точно удалить? Это действие необратимо.")) return;
-
-    // Очищаем обе таблицы
-    window.Android.executeSql(DB_NAME, "DELETE FROM orders");
-    window.Android.executeSql(DB_NAME, "DELETE FROM transactions WHERE source_app='crm'");
-    
-    alert("База данных полностью очищена.");
-    loadOrders();
-}
-
-// Отрисовка списка (на главном экране)
-let currentFilter = 'active'; // По умолчанию показываем активные (черновики)
-
-// Функция переключения вкладок
-
-// Обновленная функция рендера
-
 
 // === ПАГИНАЦИЯ И ФИЛЬТРАЦИЯ ===
-let currentFilter = 'active'; // 'active' или 'completed'
-let currentOffset = 0;        // Смещение для SQL запроса
-const LOAD_LIMIT = 20;        // Сколько заказов грузить за один раз
-let isLoading = false;        // Флаг, чтобы не дублировать запросы при скролле
-let hasMoreData = true;       // Флаг, есть ли еще данные в базе
-
-// Функция переключения вкладок
 function setFilter(filterType) {
-    if (currentFilter === filterType) return; // Если кликнули на ту же вкладку, ничего не делаем
+    if (currentFilter === filterType) return;
     
     currentFilter = filterType;
-    
-    // Обновляем внешний вид кнопок
     const tabActive = document.getElementById('tabActive');
     const tabCompleted = document.getElementById('tabCompleted');
     
@@ -383,58 +278,44 @@ function setFilter(filterType) {
         tabActive.classList.add('text-muted');
     }
     
-    // Сбрасываем пагинацию и загружаем с нуля
     loadOrders(true);
 }
 
-// Загрузка данных (с поддержкой дозагрузки)
 function loadOrders(reset = false) {
     if (reset) {
         currentOffset = 0;
         hasMoreData = true;
-        allOrders = []; // Очищаем глобальный массив
+        allOrders = [];
         document.getElementById('ordersList').innerHTML = '';
         
-        // Пересчитываем общую прибыль только при сбросе (быстрый SQL запрос)
-        const sumSql = "SELECT SUM(net_sum) as total FROM orders WHERE is_completed=1";
         try {
+            const sumSql = "SELECT SUM(net_sum) as total FROM orders WHERE is_completed=1";
             const sumResult = JSON.parse(window.Android.querySql(DB_NAME, sumSql));
-            const totalNet = sumResult[0].total || 0;
-            document.getElementById('totalNetProfit').innerText = totalNet + ' ₽';
+            document.getElementById('totalNetProfit').innerText = (sumResult[0].total || 0) + ' ₽';
         } catch (e) { console.error("Ошибка подсчета прибыли:", e); }
     }
 
-    // Если грузить больше нечего или запрос уже идет - выходим
     if (!hasMoreData || isLoading) return;
-    
     isLoading = true;
 
-    // Фильтруем прямо в базе! 0 - в работе, 1 - завершены
     const isCompleted = currentFilter === 'completed' ? 1 : 0;
-    
-    // Запрашиваем ровно LOAD_LIMIT штук, пропуская currentOffset штук
     const sql = `SELECT * FROM orders WHERE is_completed=${isCompleted} ORDER BY timestamp DESC LIMIT ${LOAD_LIMIT} OFFSET ${currentOffset}`;
     
     try {
         const jsonResult = window.Android.querySql(DB_NAME, sql);
         const newOrders = JSON.parse(jsonResult);
         
-        if (newOrders.length < LOAD_LIMIT) {
-            hasMoreData = false; // Достигли конца списка
-        }
+        if (newOrders.length < LOAD_LIMIT) hasMoreData = false;
         
-        allOrders = allOrders.concat(newOrders); // Добавляем новые к старым в памяти
-        currentOffset += newOrders.length;       // Сдвигаем курсор для следующего запроса
+        allOrders = allOrders.concat(newOrders);
+        currentOffset += newOrders.length;
         
         renderOrdersChunk(newOrders, reset);
-    } catch (e) {
-        console.error("Ошибка при загрузке:", e);
-    }
+    } catch (e) { console.error("Ошибка при загрузке:", e); }
     
     isLoading = false;
 }
 
-// Отрисовка только НОВОЙ порции заказов (чтобы не перерисовывать весь список)
 function renderOrdersChunk(ordersChunk, isReset) {
     const container = document.getElementById('ordersList');
 
@@ -445,14 +326,12 @@ function renderOrdersChunk(ordersChunk, isReset) {
     }
 
     let htmlChunk = '';
-    
     ordersChunk.forEach(o => {
         const dateStr = new Date(o.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const statusBadge = o.is_completed 
             ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Выполнен</span>' 
             : '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>В работе</span>';
 
-        // Экранируем для безопасности
         const safeClient = o.client_name ? o.client_name.replace(/'/g, "&apos;") : 'Не указан';
         const safePhone = o.phone ? o.phone.replace(/'/g, "&apos;") : 'Нет';
 
@@ -478,24 +357,17 @@ function renderOrdersChunk(ordersChunk, isReset) {
         `;
     });
 
-    // Добавляем HTML в конец списка
     container.insertAdjacentHTML('beforeend', htmlChunk);
 }
 
-// === СЛУШАТЕЛЬ БЕСКОНЕЧНОГО СКРОЛЛА ===
 window.addEventListener('scroll', () => {
-    // Если мы не на главном экране, скролл не обрабатываем
     if (document.getElementById('mainScreen').classList.contains('d-none')) return;
-    
-    // Если до конца страницы осталось меньше 300 пикселей - грузим следующую порцию
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
         loadOrders(false);
     }
 });
 
-// === УПРАВЛЕНИЕ ЭКРАНАМИ ===
- // === ФУНКЦИИ ЭКРАНОВ И ИСТОРИИ ===
-
+// === УПРАВЛЕНИЕ ЭКРАНАМИ И МОДАЛКОЙ ===
 function openDetailScreen(orderId) {
     currentViewedOrder = allOrders.find(o => o.id === orderId);
     if (!currentViewedOrder) return;
@@ -512,19 +384,13 @@ function openDetailScreen(orderId) {
     document.getElementById('detDate').innerText = new Date(o.timestamp).toLocaleDateString('ru-RU');
     document.getElementById('detStatus').innerHTML = o.is_completed ? '<span class="badge bg-success">Выполнен</span>' : '<span class="badge bg-warning text-dark">В работе (Черновик)</span>';
 
-    // Меняем экраны
     document.getElementById('mainScreen').classList.add('d-none');
     document.getElementById('detailScreen').classList.remove('d-none');
     window.scrollTo(0, 0);
-    
-    // ВАЖНО: Добавляем шаг в историю WebView
     history.pushState({ page: 'detail' }, "Detail", "#detail");
 }
 
-function closeDetailScreen() {
-    // Теперь кнопка со стрелочкой просто эмулирует системную кнопку Назад
-    history.back(); 
-}
+function closeDetailScreen() { history.back(); }
 
 function showOrderModal() {
     document.getElementById('orderId').value = '';
@@ -538,30 +404,14 @@ function showOrderModal() {
     
     document.getElementById('btnComplete').classList.remove('d-none');
     orderModal.show();
-    
-    // ВАЖНО: Добавляем шаг в историю
     history.pushState({ page: 'modal' }, "Modal", "#modal");
 }
 
-// Функция пересчета чистой прибыли
-function calcNet() {
-    // Получаем значения из полей, если пусто - ставим 0
-    const total = parseFloat(document.getElementById('orderTotal').value) || 0;
-    const parts = parseFloat(document.getElementById('orderParts').value) || 0;
-    
-    // Считаем разницу и записываем в HTML
-    document.getElementById('orderNet').innerText = (total - parts) + ' ₽';
-}
 function openEditModal() {
     try {
-        if (!currentViewedOrder) {
-            console.error("Заказ не выбран");
-            return;
-        }
+        if (!currentViewedOrder) return;
         const o = currentViewedOrder;
 
-        // 1. Безопасное присвоение (защита от null). 
-        // Если значения нет, ставим пустую строку '', чтобы поля не писали текст "null"
         document.getElementById('orderId').value = o.id || '';
         document.getElementById('orderAddress').value = o.address || '';
         document.getElementById('orderClient').value = o.client_name || '';
@@ -569,80 +419,41 @@ function openEditModal() {
         document.getElementById('orderDesc').value = o.description || '';
         document.getElementById('orderTotal').value = o.total_sum || '';
         document.getElementById('orderParts').value = o.parts_sum || '';
-        
-        // Пересчитываем чистую прибыль
         calcNet();
         
-        // 2. Безопасная проверка кнопки (чтобы скрипт не падал, если кнопка не найдена)
         const btnComplete = document.getElementById('btnComplete');
         if (btnComplete) {
-            if (o.is_completed) {
-                btnComplete.classList.add('d-none');
-            } else {
-                btnComplete.classList.remove('d-none');
-            }
-        } else {
-            if (window.Android && window.Android.log) window.Android.log("Кнопка btnComplete не найдена в HTML!");
+            if (o.is_completed) btnComplete.classList.add('d-none');
+            else btnComplete.classList.remove('d-none');
         }
         
-        // Открываем модалку
         orderModal.show();
-        
-        // 3. Оборачиваем History API в try-catch для защиты от крашей WebView на file:///
-        try {
-            history.pushState({ page: 'modal' }, "Modal", "#modal");
-        } catch (historyErr) {
-            if (window.Android && window.Android.log) window.Android.log("History API заблокирован WebView: " + historyErr.message);
-        }
-        
-    } catch (e) {
-        // Если произойдет любая другая ошибка, мы хотя бы увидим ее в логах Android Studio
-        if (window.Android && window.Android.log) window.Android.log("КРИТИЧЕСКАЯ ОШИБКА openEditModal: " + e.message);
-        alert("Произошла ошибка при открытии: " + e.message);
-    }
+        try { history.pushState({ page: 'modal' }, "Modal", "#modal"); } catch(e) {}
+    } catch (e) { alert("Ошибка: " + e.message); }
 }
+
+function calcNet() {
+    const total = parseFloat(document.getElementById('orderTotal').value) || 0;
+    const parts = parseFloat(document.getElementById('orderParts').value) || 0;
+    document.getElementById('orderNet').innerText = (total - parts) + ' ₽';
+}
+
 function deleteOrder() {
     if (!currentViewedOrder) return;
     const orderId = currentViewedOrder.id;
 
-    if (confirm("Вы уверены? Будет удален и сам заказ, и все связанные с ним записи в истории финансов.")) {
+    if (confirm("Вы уверены? Будет удален и сам заказ, и все связанные транзакции.")) {
         window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
         window.Android.executeSql(DB_NAME, `DELETE FROM orders WHERE id=${orderId}`);
-        
-        loadOrders(); 
-        history.back(); // Выходим из экрана деталей автоматически
+        loadOrders(true); 
+        history.back(); 
     }
 }
 
-    function editOrder(orderJsonStr) {
-        const o = JSON.parse(orderJsonStr);
-        document.getElementById('orderId').value = o.id;
-        document.getElementById('orderAddress').value = o.address;
-        document.getElementById('orderClient').value = o.client_name;
-        document.getElementById('orderPhone').value = o.phone;
-        document.getElementById('orderDesc').value = o.description;
-        document.getElementById('orderTotal').value = o.total_sum;
-        document.getElementById('orderParts').value = o.parts_sum;
-        
-        calcNet();
-        
-        document.getElementById('btnDelete').classList.remove('d-none');
-        
-        // Если уже выполнен, прячем кнопку завершения (чтобы не плодить дубли в финансах)
-        if (o.is_completed) {
-            document.getElementById('btnComplete').classList.add('d-none');
-        } else {
-            document.getElementById('btnComplete').classList.remove('d-none');
-        }
-        
-        orderModal.show();
-    }
-
-    function saveOrder(markAsCompleted) {
+function saveOrder(markAsCompleted) {
     const idInput = document.getElementById('orderId').value;
-    const orderId = idInput ? parseInt(idInput) : Date.now(); // Генерируем уникальный ID заказа
+    const orderId = idInput ? parseInt(idInput) : Date.now();
     
-    // Экранируем кавычки для SQL
     const address = document.getElementById('orderAddress').value.replace(/'/g, "''");
     const client = document.getElementById('orderClient').value.replace(/'/g, "''");
     const phone = document.getElementById('orderPhone').value.replace(/'/g, "''");
@@ -654,180 +465,144 @@ function deleteOrder() {
     const isCompleted = markAsCompleted ? 1 : 0;
     const ts = idInput ? Date.now() : orderId;
 
-    // 1. Сохраняем или обновляем сам заказ в таблице orders
-    let sql;
-    if (idInput) {
-        sql = `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, is_completed=${isCompleted} WHERE id=${orderId}`;
-    } else {
-        sql = `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, is_completed) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, ${isCompleted})`;
-    }
-    window.Android.executeSql(DB_NAME, sql);
-
-    // --- ИНТЕГРАЦИЯ С ФИНАНСАМИ (ИСПРАВЛЕНИЕ БАГА) ---
+    let sql = idInput 
+        ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, is_completed=${isCompleted} WHERE id=${orderId}`
+        : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, is_completed) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, ${isCompleted})`;
     
-    // 2. ВСЕГДА удаляем старые финансовые записи, привязанные к этому orderId.
-    // Это стирает историю, если мы переводим заказ обратно в черновик,
-    // и очищает место для новых сумм, если мы просто редактируем завершенный заказ.
+    window.Android.executeSql(DB_NAME, sql);
     window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
 
-    // 3. Создаем свежие финансовые записи, только если статус "Завершен"
     if (markAsCompleted) {
-        if (total > 0) {
-            // Прячем orderId в заметку, чтобы потом легко находить и удалять
-            const incomeNote = `[CRM-${orderId}] ${address}`;
-            window.Android.executeSql(DB_NAME, `
-                INSERT INTO transactions (type, amount, category, note, timestamp, source_app) 
-                VALUES ('income', ${total}, 'Услуги ремонта', '${incomeNote}', ${Date.now()}, 'crm')
-            `);
-        }
-        if (parts > 0) {
-            const expenseNote = `[CRM-${orderId}] Запчасти: ${address}`;
-            window.Android.executeSql(DB_NAME, `
-                INSERT INTO transactions (type, amount, category, note, timestamp, source_app) 
-                VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '${expenseNote}', ${Date.now() + 1000}, 'crm')
-            `);
-        }
+        if (total > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${total}, 'Услуги ремонта', '[CRM-${orderId}] ${address}', ${Date.now()}, 'crm')`);
+        if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
     }
 
-    // В функции saveOrder(markAsCompleted) в самом конце замените orderModal.hide(); loadOrders(); на:
-// ...
-window.Android.executeSql(DB_NAME, sql);
-// ... логика транзакций ...
-// 
-orderModal.hide();
-loadOrders();
-// // Если мы сохранили заказ, находясь на экране деталей - возвращаемся на главную
-if (!document.getElementById('detailScreen').classList.contains('d-none')) {
-     closeDetailScreen();
-}
+    orderModal.hide();
+    loadOrders(true);
+    if (!document.getElementById('detailScreen').classList.contains('d-none')) {
+        closeDetailScreen();
+    }
 }
 
- 
-// Функция поиска контактов (вызывается при вводе в любое из двух полей)
+// === ПОИСК КОНТАКТОВ ===
 function handleContactSearch(query) {
     const dropdown = document.getElementById('contactSuggestions');
-    
-    // Ищем, только если введено 2+ символа
-    if (!query || query.length < 2) {
-        dropdown.style.display = 'none';
-        return;
-    }
+    if (!query || query.length < 2) { dropdown.style.display = 'none'; return; }
 
     if (window.Android && window.Android.searchContacts) {
-        const jsonResult = window.Android.searchContacts(query);
-        const contacts = JSON.parse(jsonResult);
+        const contacts = JSON.parse(window.Android.searchContacts(query));
+        if (contacts.length === 0) { dropdown.style.display = 'none'; return; }
 
-        if (contacts.length === 0) {
-            dropdown.style.display = 'none';
-            return;
-        }
-
-        dropdown.innerHTML = ''; // Очищаем старые результаты
-        
+        dropdown.innerHTML = '';
         contacts.forEach(c => {
-            const safeName = c.name.replace(/'/g, "\\'"); // экранирование для JS
+            const safeName = c.name.replace(/'/g, "\\'");
             const safePhone = c.phone.replace(/'/g, "\\'");
-            
             dropdown.innerHTML += `
-                <li>
-                    <a class="dropdown-item py-2" href="#" onclick="selectContact('${safeName}', '${safePhone}'); return false;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold text-truncate" style="max-width: 60%;">${c.name}</span>
-                            <span class="small text-muted">${c.phone}</span>
-                        </div>
-                    </a>
-                </li>
-            `;
+                <li><a class="dropdown-item py-2" href="#" onclick="selectContact('${safeName}', '${safePhone}'); return false;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-truncate" style="max-width: 60%;">${c.name}</span>
+                        <span class="small text-muted">${c.phone}</span>
+                    </div>
+                </a></li>`;
         });
-        
-        dropdown.style.display = 'block'; // Показываем список
+        dropdown.style.display = 'block';
     }
 }
 
-// Выбор контакта из списка
 function selectContact(name, phone) {
     document.getElementById('orderClient').value = name;
     document.getElementById('orderPhone').value = phone;
     document.getElementById('contactSuggestions').style.display = 'none';
 }
 
-// Скрываем список, если кликнули в любое другое место
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('#contactSuggestions') && !e.target.closest('#orderClient') && !e.target.closest('#orderPhone')) {
-        document.getElementById('contactSuggestions').style.display = 'none';
-    }
-});
-
-     function handleAddressSearch(query) {
+// === ПОИСК АДРЕСОВ ===
+function handleAddressSearch(query) {
     const dropdown = document.getElementById('addressSuggestions');
-    
-    if (!query || query.trim().length < 2) {
-        dropdown.style.display = 'none';
-        return;
-    }
+    if (!query || query.trim().length < 2) { dropdown.style.display = 'none'; return; }
 
-    // 1. Подготавливаем запрос: переводим в нижний регистр и убираем лишние пробелы
-    const lowerQuery = query.toLowerCase().trim();
-    
-    // 2. Разбиваем запрос на отдельные части (токены) по пробелам. 
-    // "огор ту" превратится в массив ["огор", "ту"]
-    const searchTerms = lowerQuery.split(/\s+/);
-
-    // 3. Фильтруем массив улиц
-    const matches = SARATOV_STREETS.filter(street => {
-        // Убираем тире и точки, чтобы поиск "1 огор" находил "1-й Огородный"
+    const searchTerms = query.toLowerCase().trim().split(/\s+/);
+    const matches = (typeof SARATOV_STREETS !== 'undefined' ? SARATOV_STREETS : []).filter(street => {
         const normalizedStreet = street.toLowerCase().replace(/[-.]/g, ' ');
-        
-        // Метод .every() вернет true, только если ВСЕ части запроса найдены в строке
         return searchTerms.every(term => normalizedStreet.includes(term));
-    }).slice(0, 10); // Оставляем топ-10 совпадений
+    }).slice(0, 10);
 
-    if (matches.length === 0) {
-        dropdown.style.display = 'none';
-        return;
-    }
+    if (matches.length === 0) { dropdown.style.display = 'none'; return; }
 
     dropdown.innerHTML = '';
-    
     matches.forEach(street => {
         const safeStreet = street.replace(/'/g, "\\'"); 
-        
-        // (Опционально) Выделяем жирным совпадения.
-        // Для простоты пока просто выводим улицу, как раньше
         dropdown.innerHTML += `
-            <li>
-                <a class="dropdown-item py-2 text-wrap" href="#" onclick="selectAddress('${safeStreet}'); return false;">
-                    <i class="fa-solid fa-location-dot text-muted me-2"></i>
-                    <span>${street}</span>
-                </a>
-            </li>
-        `;
+            <li><a class="dropdown-item py-2 text-wrap" href="#" onclick="selectAddress('${safeStreet}'); return false;">
+                <i class="fa-solid fa-location-dot text-muted me-2"></i><span>${street}</span>
+            </a></li>`;
     });
-    
     dropdown.style.display = 'block';
 }
 
 function selectAddress(street) {
     const addressInput = document.getElementById('orderAddress');
-    
-    // Вставляем название улицы и подготавливаем место для номера дома
     addressInput.value = street + ', д. ';
     document.getElementById('addressSuggestions').style.display = 'none';
-    
-    // Возвращаем фокус в поле, чтобы мастер сразу ввел номер дома
     addressInput.focus();
 }
 
-// Скрытие списка при клике вне него остается тем же
 document.addEventListener('click', function(e) {
+    if (!e.target.closest('#contactSuggestions') && !e.target.closest('#orderClient') && !e.target.closest('#orderPhone')) {
+        const el = document.getElementById('contactSuggestions');
+        if(el) el.style.display = 'none';
+    }
     if (!e.target.closest('#addressSuggestions') && !e.target.closest('#orderAddress')) {
         const el = document.getElementById('addressSuggestions');
         if(el) el.style.display = 'none';
     }
 });
 
+// === ТЕСТИРОВАНИЕ ===
+function generateTestData() {
+    if (!confirm("Это добавит 10 000 записей. Продолжить?")) return;
+    const btn = document.getElementById('btnGenerate');
+    btn.disabled = true; btn.innerText = "Идет генерация...";
+
+    const names = ["Александр", "Елена", "Максим", "Ольга", "Иван", "Анна", "Сергей", "Наталья"];
+    let totalInserted = 0;
     
-    window.addEventListener('DOMContentLoaded', initDb);
+    function insertBatch() {
+        let sql = "INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, is_completed) VALUES ";
+        let values = [];
+        for (let i = 0; i < 500; i++) {
+            const id = Date.now() + totalInserted + i;
+            const street = (typeof SARATOV_STREETS !== 'undefined' && SARATOV_STREETS.length > 0) ? SARATOV_STREETS[Math.floor(Math.random() * SARATOV_STREETS.length)] : "ул. Тестовая";
+            const address = street + ", д. " + Math.floor(Math.random() * 150 + 1);
+            const name = names[Math.floor(Math.random() * names.length)];
+            const phone = "89" + Math.floor(100000000 + Math.random() * 900000000);
+            const total = Math.floor(Math.random() * 50) * 100 + 1000;
+            const parts = Math.floor(Math.random() * 15) * 100;
+            const isCompleted = Math.random() > 0.4 ? 1 : 0;
+            values.push(`(${id}, '${address}', '${name}', '${phone}', 'Тестовый', ${total}, ${parts}, ${total-parts}, ${Date.now() - Math.floor(Math.random() * 10000000000)}, ${isCompleted})`);
+        }
+        window.Android.executeSql(DB_NAME, sql + values.join(", "));
+        totalInserted += 500;
+        
+        if (totalInserted < 10000) {
+            btn.innerText = `Добавлено: ${totalInserted} / 10000`;
+            setTimeout(insertBatch, 20);
+        } else {
+            btn.disabled = false; btn.innerText = "Сгенерировать 10 000 заказов";
+            alert("Успешно добавлено!"); loadOrders(true);
+        }
+    }
+    insertBatch();
+}
+
+function clearDatabase() {
+    if (!confirm("ВНИМАНИЕ! База будет очищена. Вы уверены?")) return;
+    window.Android.executeSql(DB_NAME, "DELETE FROM orders");
+    window.Android.executeSql(DB_NAME, "DELETE FROM transactions WHERE source_app='crm'");
+    loadOrders(true);
+}
+
+// === ЗАПУСК ===
+window.addEventListener('DOMContentLoaded', initDb);
 </script>
 </body>
 </html>
