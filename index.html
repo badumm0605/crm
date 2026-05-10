@@ -118,7 +118,65 @@
         </button>
     </div>
 </div>
+<div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered align-items-end mb-0" style="min-height: 100vh;">
+        <div class="modal-content border-0 rounded-top-4" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="modalTitle">Заказ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="orderId">
+                
+                <div class="mb-3 position-relative">
+                    <label class="form-label text-muted small mb-1">Адрес</label>
+                    <input type="text" id="orderAddress" class="form-control fw-bold" placeholder="ул. Ленина 1, кв 2" autocomplete="off" oninput="handleAddressSearch(this.value)">
+                    <ul id="addressSuggestions" class="dropdown-menu w-100 shadow-lg border-0" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 250px; overflow-y: auto;"></ul>
+                </div>
+                
+                <div class="row g-2 mb-3 position-relative">
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Имя клиента</label>
+                        <input type="text" id="orderClient" class="form-control" placeholder="Иван" autocomplete="off" oninput="handleContactSearch(this.value)">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Телефон</label>
+                        <input type="tel" id="orderPhone" class="form-control" placeholder="8999..." autocomplete="off" oninput="handleContactSearch(this.value)">
+                    </div>
+                    <ul id="contactSuggestions" class="dropdown-menu w-100 shadow-lg border-0" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 200px; overflow-y: auto;"></ul>
+                </div>
 
+                <div class="mb-3">
+                    <label class="form-label text-muted small mb-1">Описание поломки / работ</label>
+                    <textarea id="orderDesc" class="form-control" rows="2" placeholder="Замена подшипников..."></textarea>
+                </div>
+
+                <div class="row g-2 mb-4 p-3 bg-light rounded-3 border">
+                    <h6 class="w-100 fw-bold text-center mb-3">Финансы</h6>
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Общий чек (₽)</label>
+                        <input type="number" id="orderTotal" class="form-control fw-bold text-success" placeholder="0" oninput="calcNet()">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Расход / Запчасти (₽)</label>
+                        <input type="number" id="orderParts" class="form-control fw-bold text-danger" placeholder="0" oninput="calcNet()">
+                    </div>
+                    <div class="col-12 mt-2 text-center">
+                        <span class="text-muted small">Чистая прибыль: </span>
+                        <span id="orderNet" class="fw-bold fs-5">0 ₽</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary w-100 py-3 rounded-3 fw-bold mb-2" onclick="saveOrder(false)">
+                    Сохранить черновик
+                </button>
+                <button class="btn btn-success w-100 py-3 rounded-3 fw-bold" onclick="saveOrder(true)" id="btnComplete">
+                    <i class="fa-solid fa-check-double me-2"></i>Завершить заказ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <script src="file:///android_asset/js/bootstrap.bundle.min.js"></script>
     <script src="streets.js"></script>
 <script>
