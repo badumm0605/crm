@@ -66,7 +66,13 @@
                 
                 <div class="mb-3">
                     <label class="form-label text-muted small mb-1">Адрес</label>
-                    <input type="text" id="orderAddress" class="form-control fw-bold" placeholder="ул. Ленина 1, кв 2">
+                    <div class="mb-3 position-relative">
+    <label class="form-label text-muted small mb-1">Адрес</label>
+    <input type="text" id="orderAddress" class="form-control fw-bold" placeholder="ул. Ленина 1, кв 2" autocomplete="off" oninput="handleAddressSearch(this.value)">
+    
+    <ul id="addressSuggestions" class="dropdown-menu w-100 shadow-lg border-0" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 250px; overflow-y: auto;">
+        </ul>
+</div>
                 </div>
                 
                 <div class="row g-2 mb-3 position-relative">
@@ -119,6 +125,7 @@
 </div>
 
 <script src="file:///android_asset/js/bootstrap.bundle.min.js"></script>
+    <script src="streets.js"></script>
 <script>
     const DB_NAME = "finance_bus.db"; // ТА ЖЕ БАЗА ДАННЫХ
     const orderModal = new bootstrap.Modal(document.getElementById('orderModal'));
@@ -371,6 +378,69 @@ document.addEventListener('click', function(e) {
         document.getElementById('contactSuggestions').style.display = 'none';
     }
 });
+
+    function handleAddressSearch(query) {
+    const dropdown = document.getElementById('addressSuggestions');
+    
+    // Ищем, только если введено больше 1 символа
+    if (!query || query.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    // Переводим запрос в нижний регистр для независимого поиска
+    const lowerQuery = query.toLowerCase();
+    
+    // Фильтруем локальный массив. 
+    // Ограничиваем выдачу до 10 вариантов, чтобы не рисовать бесконечный список
+    const matches = SARATOV_STREETS.filter(street => 
+        street.toLowerCase().includes(lowerQuery)
+    ).slice(0, 10);
+
+    if (matches.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    dropdown.innerHTML = '';
+    
+    matches.forEach(street => {
+        // Экранируем кавычки на случай, если в названии улицы они есть
+        const safeStreet = street.replace(/'/g, "\\'"); 
+        
+        dropdown.innerHTML += `
+            <li>
+                <a class="dropdown-item py-2 text-wrap" href="#" onclick="selectAddress('${safeStreet}'); return false;">
+                    <i class="fa-solid fa-location-dot text-muted me-2"></i>
+                    <span class="fw-bold">${street}</span>
+                </a>
+            </li>
+        `;
+    });
+    
+    dropdown.style.display = 'block';
+}
+
+function selectAddress(street) {
+    const addressInput = document.getElementById('orderAddress');
+    
+    // Вставляем название улицы и подготавливаем место для номера дома
+    addressInput.value = street + ', д. ';
+    document.getElementById('addressSuggestions').style.display = 'none';
+    
+    // Возвращаем фокус в поле, чтобы мастер сразу ввел номер дома
+    addressInput.focus();
+}
+
+// Скрытие списка при клике вне него остается тем же
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#addressSuggestions') && !e.target.closest('#orderAddress')) {
+        const el = document.getElementById('addressSuggestions');
+        if(el) el.style.display = 'none';
+    }
+});
+
+    
     window.addEventListener('DOMContentLoaded', initDb);
 </script>
 </body>
