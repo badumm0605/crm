@@ -270,7 +270,42 @@ function renderOrders() {
 
     document.getElementById('totalNetProfit').innerText = totalNet + ' ₽';
 }
+// === УПРАВЛЕНИЕ ЭКРАНАМИ ===
+function openDetailScreen(orderId) {
+    // Находим заказ в массиве загруженных
+    currentViewedOrder = allOrders.find(o => o.id === orderId);
+    if (!currentViewedOrder) return;
 
+    const o = currentViewedOrder;
+    
+    // Заполняем данные на экране деталей
+    document.getElementById('detAddress').innerText = o.address;
+    document.getElementById('detClient').innerText = o.client_name || 'Не указан';
+    document.getElementById('detPhone').innerText = o.phone || 'Не указан';
+    document.getElementById('detPhoneBtn').href = o.phone ? `tel:${o.phone}` : '#';
+    document.getElementById('detDesc').innerText = o.description || 'Нет описания';
+    
+    document.getElementById('detTotal').innerText = (o.total_sum || 0) + ' ₽';
+    document.getElementById('detParts').innerText = (o.parts_sum || 0) + ' ₽';
+    document.getElementById('detNet').innerText = (o.net_sum || 0) + ' ₽';
+    
+    document.getElementById('detDate').innerText = new Date(o.timestamp).toLocaleDateString('ru-RU');
+    document.getElementById('detStatus').innerHTML = o.is_completed 
+        ? '<span class="badge bg-success">Выполнен</span>' 
+        : '<span class="badge bg-warning text-dark">В работе (Черновик)</span>';
+
+    // Скрываем главное меню, показываем детали
+    document.getElementById('mainScreen').classList.add('d-none');
+    document.getElementById('detailScreen').classList.remove('d-none');
+    window.scrollTo(0, 0); // Прокручиваем наверх для удобства
+}
+
+function closeDetailScreen() {
+    currentViewedOrder = null;
+    // Скрываем детали, возвращаем главное меню
+    document.getElementById('detailScreen').classList.add('d-none');
+    document.getElementById('mainScreen').classList.remove('d-none');
+}
     function calcNet() {
         const total = parseFloat(document.getElementById('orderTotal').value) || 0;
         const parts = parseFloat(document.getElementById('orderParts').value) || 0;
