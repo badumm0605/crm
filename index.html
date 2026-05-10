@@ -183,6 +183,41 @@
     const DB_NAME = "finance_bus.db"; // ТА ЖЕ БАЗА ДАННЫХ
     const orderModal = new bootstrap.Modal(document.getElementById('orderModal'));
 
+
+// === ПЕРЕХВАТ АППАРАТНОЙ КНОПКИ НАЗАД ===
+
+// Ловим событие системной кнопки Назад (или вызов history.back())
+window.addEventListener('popstate', function(event) {
+    const state = event.state; // Читаем метку, которую мы оставили
+
+    // 1. Если открыта модалка заказа - принудительно закрываем ее
+    if (document.getElementById('orderModal').classList.contains('show')) {
+        orderModal.hide();
+    }
+
+    // 2. Управляем видимостью экранов
+    if (!state || !state.page) {
+        // Истории нет (корень) - показываем Главный экран
+        document.getElementById('detailScreen').classList.add('d-none');
+        document.getElementById('mainScreen').classList.remove('d-none');
+        currentViewedOrder = null;
+    } else if (state.page === 'detail') {
+        // Мы отмотали назад из модалки на экран деталей - показываем его
+        document.getElementById('mainScreen').classList.add('d-none');
+        document.getElementById('detailScreen').classList.remove('d-none');
+    }
+});
+
+// Отлавливаем ситуацию, когда модалку закрыли НЕ кнопкой "Назад" 
+// (например, кликнули по темному фону или нажали крестик). 
+// Нам нужно "подчистить" историю, чтобы кнопка Назад не сработала вхолостую в будущем.
+document.getElementById('orderModal').addEventListener('hide.bs.modal', function (event) {
+    if (history.state && history.state.page === 'modal') {
+        history.back();
+    }
+});
+
+
     function initDb() {
         if (!window.Android || !window.Android.executeSql) {
             console.error("Android Bridge недоступен.");
@@ -271,49 +306,39 @@ function renderOrders() {
     document.getElementById('totalNetProfit').innerText = totalNet + ' ₽';
 }
 // === УПРАВЛЕНИЕ ЭКРАНАМИ ===
+ // === ФУНКЦИИ ЭКРАНОВ И ИСТОРИИ ===
+
 function openDetailScreen(orderId) {
-    // Находим заказ в массиве загруженных
     currentViewedOrder = allOrders.find(o => o.id === orderId);
     if (!currentViewedOrder) return;
-
     const o = currentViewedOrder;
-    
-    // Заполняем данные на экране деталей
+
     document.getElementById('detAddress').innerText = o.address;
     document.getElementById('detClient').innerText = o.client_name || 'Не указан';
     document.getElementById('detPhone').innerText = o.phone || 'Не указан';
     document.getElementById('detPhoneBtn').href = o.phone ? `tel:${o.phone}` : '#';
     document.getElementById('detDesc').innerText = o.description || 'Нет описания';
-    
     document.getElementById('detTotal').innerText = (o.total_sum || 0) + ' ₽';
     document.getElementById('detParts').innerText = (o.parts_sum || 0) + ' ₽';
     document.getElementById('detNet').innerText = (o.net_sum || 0) + ' ₽';
-    
     document.getElementById('detDate').innerText = new Date(o.timestamp).toLocaleDateString('ru-RU');
-    document.getElementById('detStatus').innerHTML = o.is_completed 
-        ? '<span class="badge bg-success">Выполнен</span>' 
-        : '<span class="badge bg-warning text-dark">В работе (Черновик)</span>';
+    document.getElementById('detStatus').innerHTML = o.is_completed ? '<span class="badge bg-success">Выполнен</span>' : '<span class="badge bg-warning text-dark">В работе (Черновик)</span>';
 
-    // Скрываем главное меню, показываем детали
+    // Меняем экраны
     document.getElementById('mainScreen').classList.add('d-none');
     document.getElementById('detailScreen').classList.remove('d-none');
-    window.scrollTo(0, 0); // Прокручиваем наверх для удобства
+    window.scrollTo(0, 0);
+    
+    // ВАЖНО: Добавляем шаг в историю WebView
+    history.pushState({ page: 'detail' }, "Detail", "#detail");
 }
 
 function closeDetailScreen() {
-    currentViewedOrder = null;
-    // Скрываем детали, возвращаем главное меню
-    document.getElementById('detailScreen').classList.add('d-none');
-    document.getElementById('mainScreen').classList.remove('d-none');
+    // Теперь кнопка со стрелочкой просто эмулирует системную кнопку Назад
+    history.back(); 
 }
-    function calcNet() {
-        const total = parseFloat(document.getElementById('orderTotal').value) || 0;
-        const parts = parseFloat(document.getElementById('orderParts').value) || 0;
-        document.getElementById('orderNet').innerText = (total - parts) + ' ₽';
-    }
 
 function showOrderModal() {
-    // Для создания нового заказа с главного экрана
     document.getElementById('orderId').value = '';
     document.getElementById('orderAddress').value = '';
     document.getElementById('orderClient').value = '';
@@ -325,10 +350,12 @@ function showOrderModal() {
     
     document.getElementById('btnComplete').classList.remove('d-none');
     orderModal.show();
+    
+    // ВАЖНО: Добавляем шаг в историю
+    history.pushState({ page: 'modal' }, "Modal", "#modal");
 }
 
 function openEditModal() {
-    // Открытие модалки из экрана деталей для редактирования
     if (!currentViewedOrder) return;
     const o = currentViewedOrder;
 
@@ -348,6 +375,22 @@ function openEditModal() {
     }
     
     orderModal.show();
+    
+    // ВАЖНО: Добавляем шаг в историю
+    history.pushState({ page: 'modal' }, "Modal", "#modal");
+}
+
+function deleteOrder() {
+    if (!currentViewedOrder) return;
+    const orderId = currentViewedOrder.id;
+
+    if (confirm("Вы уверены? Будет удален и сам заказ, и все связанные с ним записи в истории финансов.")) {
+        window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
+        window.Android.executeSql(DB_NAME, `DELETE FROM orders WHERE id=${orderId}`);
+        
+        loadOrders(); 
+        history.back(); // Выходим из экрана деталей автоматически
+    }
 }
 
     function editOrder(orderJsonStr) {
@@ -438,18 +481,7 @@ if (!document.getElementById('detailScreen').classList.contains('d-none')) {
 }
 }
 
-function deleteOrder() {
-    if (!currentViewedOrder) return;
-    const orderId = currentViewedOrder.id;
-
-    if (confirm("Вы уверены? Будет удален и сам заказ, и все связанные с ним записи в истории финансов.")) {
-        window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
-        window.Android.executeSql(DB_NAME, `DELETE FROM orders WHERE id=${orderId}`);
-        
-        closeDetailScreen(); // Возвращаемся на главный экран
-        loadOrders(); // Перезагружаем список
-    }
-}
+ 
 // Функция поиска контактов (вызывается при вводе в любое из двух полей)
 function handleContactSearch(query) {
     const dropdown = document.getElementById('contactSuggestions');
