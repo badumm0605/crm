@@ -275,22 +275,7 @@ let currentViewedOrder = null; // Текущий открытый заказ
 
    // Загрузка
 // Загрузка (ОПТИМИЗИРОВАННАЯ для больших данных)
-function loadOrders() {
-    // 1. Быстро считаем общую прибыль напрямую в базе (без выгрузки всех 10000 в память)
-    const sumSql = "SELECT SUM(net_sum) as total FROM orders WHERE is_completed=1";
-    try {
-        const sumResult = JSON.parse(window.Android.querySql(DB_NAME, sumSql));
-        const totalNet = sumResult[0].total || 0;
-        document.getElementById('totalNetProfit').innerText = totalNet + ' ₽';
-    } catch (e) { console.error("Ошибка подсчета:", e); }
 
-    // 2. Выгружаем только 200 последних записей для отрисовки, чтобы интерфейс летал
-    const sql = "SELECT * FROM orders ORDER BY timestamp DESC LIMIT 200";
-    const jsonResult = window.Android.querySql(DB_NAME, sql);
-    allOrders = JSON.parse(jsonResult);
-    
-    renderOrders(); // Теперь тут не нужно считать totalNet, мы это сделали выше
-}
 
 // === ФУНКЦИИ ТЕСТИРОВАНИЯ ===
 
@@ -365,57 +350,113 @@ function clearDatabase() {
 let currentFilter = 'active'; // По умолчанию показываем активные (черновики)
 
 // Функция переключения вкладок
+
+// Обновленная функция рендера
+
+
+// === ПАГИНАЦИЯ И ФИЛЬТРАЦИЯ ===
+let currentFilter = 'active'; // 'active' или 'completed'
+let currentOffset = 0;        // Смещение для SQL запроса
+const LOAD_LIMIT = 20;        // Сколько заказов грузить за один раз
+let isLoading = false;        // Флаг, чтобы не дублировать запросы при скролле
+let hasMoreData = true;       // Флаг, есть ли еще данные в базе
+
+// Функция переключения вкладок
 function setFilter(filterType) {
+    if (currentFilter === filterType) return; // Если кликнули на ту же вкладку, ничего не делаем
+    
     currentFilter = filterType;
     
-    // Обновляем внешний вид кнопок (цвета)
+    // Обновляем внешний вид кнопок
     const tabActive = document.getElementById('tabActive');
     const tabCompleted = document.getElementById('tabCompleted');
     
     if (filterType === 'active') {
-        tabActive.classList.add('active');
+        tabActive.classList.add('active', 'text-dark');
         tabActive.classList.remove('text-muted');
-        tabCompleted.classList.remove('active');
+        tabCompleted.classList.remove('active', 'text-dark');
         tabCompleted.classList.add('text-muted');
     } else {
-        tabCompleted.classList.add('active');
+        tabCompleted.classList.add('active', 'text-dark');
         tabCompleted.classList.remove('text-muted');
-        tabActive.classList.remove('active');
+        tabActive.classList.remove('active', 'text-dark');
         tabActive.classList.add('text-muted');
     }
     
-    // Перерисовываем список с новым фильтром
-    renderOrders();
+    // Сбрасываем пагинацию и загружаем с нуля
+    loadOrders(true);
 }
 
-// Обновленная функция рендера
-function renderOrders() {
-    const container = document.getElementById('ordersList');
-    container.innerHTML = '';
-    
-    // 1. Сначала считаем общую чистую прибыль по ВСЕМ заказам
-   
-    // 2. Фильтруем массив для отображения
-    const filteredOrders = allOrders.filter(o => {
-        if (currentFilter === 'active') return o.is_completed === 0;
-        if (currentFilter === 'completed') return o.is_completed === 1;
-        return true;
-    });
+// Загрузка данных (с поддержкой дозагрузки)
+function loadOrders(reset = false) {
+    if (reset) {
+        currentOffset = 0;
+        hasMoreData = true;
+        allOrders = []; // Очищаем глобальный массив
+        document.getElementById('ordersList').innerHTML = '';
+        
+        // Пересчитываем общую прибыль только при сбросе (быстрый SQL запрос)
+        const sumSql = "SELECT SUM(net_sum) as total FROM orders WHERE is_completed=1";
+        try {
+            const sumResult = JSON.parse(window.Android.querySql(DB_NAME, sumSql));
+            const totalNet = sumResult[0].total || 0;
+            document.getElementById('totalNetProfit').innerText = totalNet + ' ₽';
+        } catch (e) { console.error("Ошибка подсчета прибыли:", e); }
+    }
 
-    // 3. Рисуем интерфейс
-    if (filteredOrders.length === 0) {
+    // Если грузить больше нечего или запрос уже идет - выходим
+    if (!hasMoreData || isLoading) return;
+    
+    isLoading = true;
+
+    // Фильтруем прямо в базе! 0 - в работе, 1 - завершены
+    const isCompleted = currentFilter === 'completed' ? 1 : 0;
+    
+    // Запрашиваем ровно LOAD_LIMIT штук, пропуская currentOffset штук
+    const sql = `SELECT * FROM orders WHERE is_completed=${isCompleted} ORDER BY timestamp DESC LIMIT ${LOAD_LIMIT} OFFSET ${currentOffset}`;
+    
+    try {
+        const jsonResult = window.Android.querySql(DB_NAME, sql);
+        const newOrders = JSON.parse(jsonResult);
+        
+        if (newOrders.length < LOAD_LIMIT) {
+            hasMoreData = false; // Достигли конца списка
+        }
+        
+        allOrders = allOrders.concat(newOrders); // Добавляем новые к старым в памяти
+        currentOffset += newOrders.length;       // Сдвигаем курсор для следующего запроса
+        
+        renderOrdersChunk(newOrders, reset);
+    } catch (e) {
+        console.error("Ошибка при загрузке:", e);
+    }
+    
+    isLoading = false;
+}
+
+// Отрисовка только НОВОЙ порции заказов (чтобы не перерисовывать весь список)
+function renderOrdersChunk(ordersChunk, isReset) {
+    const container = document.getElementById('ordersList');
+
+    if (isReset && ordersChunk.length === 0) {
         const emptyText = currentFilter === 'active' ? 'Нет заказов в работе' : 'Нет завершенных заказов';
         container.innerHTML = `<p class="text-center text-muted mt-4">${emptyText}</p>`;
         return;
     }
 
-    filteredOrders.forEach(o => {
+    let htmlChunk = '';
+    
+    ordersChunk.forEach(o => {
         const dateStr = new Date(o.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const statusBadge = o.is_completed 
             ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Выполнен</span>' 
             : '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>В работе</span>';
 
-        container.innerHTML += `
+        // Экранируем для безопасности
+        const safeClient = o.client_name ? o.client_name.replace(/'/g, "&apos;") : 'Не указан';
+        const safePhone = o.phone ? o.phone.replace(/'/g, "&apos;") : 'Нет';
+
+        htmlChunk += `
             <div class="card order-card shadow-sm ${o.is_completed ? 'completed' : ''}" onclick="openDetailScreen(${o.id})">
                 <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -423,9 +464,9 @@ function renderOrders() {
                         <div class="text-end" style="font-size: 0.75rem;">${dateStr}<br>${statusBadge}</div>
                     </div>
                     <div class="d-flex align-items-center mb-2" style="font-size: 0.9rem;">
-                        <i class="fa-solid fa-user text-muted me-2"></i> <span class="text-truncate" style="max-width: 100px;">${o.client_name}</span>
+                        <i class="fa-solid fa-user text-muted me-2"></i> <span class="text-truncate" style="max-width: 100px;">${safeClient}</span>
                         <span class="mx-2 text-muted">•</span> 
-                        <span class="text-primary"><i class="fa-solid fa-phone me-1"></i>${o.phone || 'Нет'}</span>
+                        <span class="text-primary"><i class="fa-solid fa-phone me-1"></i>${safePhone}</span>
                     </div>
                     <div class="financial-row d-flex justify-content-between text-center small mt-3">
                         <div><span class="text-muted d-block" style="font-size: 0.7rem;">Общ</span><strong class="text-dark">${o.total_sum || 0}</strong></div>
@@ -436,7 +477,22 @@ function renderOrders() {
             </div>
         `;
     });
+
+    // Добавляем HTML в конец списка
+    container.insertAdjacentHTML('beforeend', htmlChunk);
 }
+
+// === СЛУШАТЕЛЬ БЕСКОНЕЧНОГО СКРОЛЛА ===
+window.addEventListener('scroll', () => {
+    // Если мы не на главном экране, скролл не обрабатываем
+    if (document.getElementById('mainScreen').classList.contains('d-none')) return;
+    
+    // Если до конца страницы осталось меньше 300 пикселей - грузим следующую порцию
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
+        loadOrders(false);
+    }
+});
+
 // === УПРАВЛЕНИЕ ЭКРАНАМИ ===
  // === ФУНКЦИИ ЭКРАНОВ И ИСТОРИИ ===
 
