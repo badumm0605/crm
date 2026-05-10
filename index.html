@@ -32,94 +32,90 @@
     </style>
 </head>
 <body>
-
-<div class="container py-3">
-    <div class="crm-header p-4 mb-4 shadow-sm">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0 fw-bold"><i class="fa-solid fa-toolbox me-2"></i>Рабочие заказы</h5>
-        </div>
-        <p class="mb-1 mt-3 opacity-75 small">Чистая прибыль (все время)</p>
-        <h2 class="fw-bold mb-0 text-success" id="totalNetProfit">0 ₽</h2>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-end mb-3 px-1">
-        <h6 class="text-muted fw-bold mb-0">Список ремонтов</h6>
-    </div>
-
-    <div id="ordersList" class="d-flex flex-column gap-3">
-        </div>
-</div>
-
-<button class="fab" onclick="showOrderModal()">
-    <i class="fa-solid fa-plus"></i>
-</button>
-
-<div class="modal fade" id="orderModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered align-items-end mb-0" style="min-height: 100vh;">
-        <div class="modal-content border-0 rounded-top-4" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" id="modalTitle">Новый заказ</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div id="mainScreen">
+    <div class="container py-3">
+        <div class="crm-header p-4 mb-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0 fw-bold"><i class="fa-solid fa-toolbox me-2"></i>Рабочие заказы</h5>
             </div>
-            <div class="modal-body">
-                <input type="hidden" id="orderId">
-                
-                <div class="mb-3">
-                    <div class="mb-3 position-relative">
-    <label class="form-label text-muted small mb-1">Адрес</label>
-    <input type="text" id="orderAddress" class="form-control fw-bold" placeholder="ул. Ленина 1, кв 2" autocomplete="off" oninput="handleAddressSearch(this.value)">
-    
-    <ul id="addressSuggestions" class="dropdown-menu w-100 shadow-lg border-0" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 250px; overflow-y: auto;">
-        </ul>
+            <p class="mb-1 mt-3 opacity-75 small">Чистая прибыль (все время)</p>
+            <h2 class="fw-bold mb-0 text-success" id="totalNetProfit">0 ₽</h2>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-end mb-3 px-1">
+            <h6 class="text-muted fw-bold mb-0">Список ремонтов</h6>
+        </div>
+
+        <div id="ordersList" class="d-flex flex-column gap-3"></div>
+    </div>
+
+    <button class="fab" onclick="showOrderModal()">
+        <i class="fa-solid fa-plus"></i>
+    </button>
 </div>
+
+<div id="detailScreen" class="d-none">
+    <div class="container py-3">
+        <div class="d-flex align-items-center mb-4 pt-1">
+            <button class="btn btn-light rounded-circle me-3 shadow-sm" onclick="closeDetailScreen()" style="width: 40px; height: 40px;">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <h5 class="mb-0 fw-bold text-truncate" id="detAddress">Адрес</h5>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                    <div>
+                        <small class="text-muted d-block">Статус</small>
+                        <span id="detStatus"></span>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted d-block">Дата</small>
+                        <strong id="detDate"></strong>
+                    </div>
                 </div>
-                
-                <div class="row g-2 mb-3 position-relative">
-    <div class="col-6">
-        <label class="form-label text-muted small mb-1">Имя клиента</label>
-        <input type="text" id="orderClient" class="form-control" placeholder="Иван" autocomplete="off" oninput="handleContactSearch(this.value)">
-    </div>
-    <div class="col-6">
-        <label class="form-label text-muted small mb-1">Телефон</label>
-        <input type="tel" id="orderPhone" class="form-control" placeholder="8999..." autocomplete="off" oninput="handleContactSearch(this.value)">
-    </div>
-    
-    <ul id="contactSuggestions" class="dropdown-menu w-100 shadow-lg border-0" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 200px; overflow-y: auto;">
-        </ul>
-</div>
 
                 <div class="mb-3">
-                    <label class="form-label text-muted small mb-1">Описание поломки / работ</label>
-                    <textarea id="orderDesc" class="form-control" rows="2" placeholder="Замена подшипников..."></textarea>
+                    <small class="text-muted d-block">Клиент</small>
+                    <strong id="detClient" class="fs-5"></strong>
                 </div>
 
-                <div class="row g-2 mb-4 p-3 bg-light rounded-3 border">
-                    <h6 class="w-100 fw-bold text-center mb-3">Финансы</h6>
-                    <div class="col-6">
-                        <label class="form-label text-muted small mb-1">Общий чек (₽)</label>
-                        <input type="number" id="orderTotal" class="form-control fw-bold text-success" placeholder="0" oninput="calcNet()">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label text-muted small mb-1">Расход / Запчасти (₽)</label>
-                        <input type="number" id="orderParts" class="form-control fw-bold text-danger" placeholder="0" oninput="calcNet()">
-                    </div>
-                    <div class="col-12 mt-2 text-center">
-                        <span class="text-muted small">Чистая прибыль: </span>
-                        <span id="orderNet" class="fw-bold fs-5">0 ₽</span>
-                    </div>
+                <div class="mb-3">
+                    <small class="text-muted d-block">Телефон</small>
+                    <a href="#" id="detPhoneBtn" class="btn btn-outline-primary btn-sm mt-1 rounded-pill fw-bold">
+                        <i class="fa-solid fa-phone me-2"></i><span id="detPhone"></span>
+                    </a>
                 </div>
 
-                <button class="btn btn-primary w-100 py-3 rounded-3 fw-bold mb-2" onclick="saveOrder(false)">
-                    Сохранить черновик
-                </button>
-                <button class="btn btn-success w-100 py-3 rounded-3 fw-bold" onclick="saveOrder(true)" id="btnComplete">
-                    <i class="fa-solid fa-check-double me-2"></i>Завершить заказ (внести в Финансы)
-                </button>
-                <button class="btn btn-outline-danger w-100 py-2 rounded-3 mt-3 d-none" id="btnDelete" onclick="deleteOrder()">
-                    Удалить заказ
-                </button>
+                <div class="mb-3 pb-3 border-bottom">
+                    <small class="text-muted d-block">Описание работ</small>
+                    <span id="detDesc"></span>
+                </div>
+
+                <div class="row text-center g-2 pt-2">
+                    <div class="col-4">
+                        <small class="text-muted d-block">Общий</small>
+                        <strong id="detTotal" class="text-dark">0 ₽</strong>
+                    </div>
+                    <div class="col-4 border-start border-end">
+                        <small class="text-muted d-block">Расход</small>
+                        <strong id="detParts" class="text-danger">0 ₽</strong>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block">Чистая</small>
+                        <strong id="detNet" class="text-success">0 ₽</strong>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <button class="btn btn-primary w-100 py-3 rounded-3 fw-bold mb-2 shadow-sm" onclick="openEditModal()">
+            <i class="fa-solid fa-pen me-2"></i>Редактировать заказ
+        </button>
+        <button class="btn btn-outline-danger w-100 py-3 rounded-3" onclick="deleteOrder()">
+            <i class="fa-solid fa-trash-can me-2"></i>Удалить заказ
+        </button>
     </div>
 </div>
 
@@ -162,62 +158,60 @@
         loadOrders();
     }
 
-    function loadOrders() {
-        const sql = "SELECT * FROM orders ORDER BY timestamp DESC";
-        const jsonResult = window.Android.querySql(DB_NAME, sql);
-        const orders = JSON.parse(jsonResult);
-        renderOrders(orders);
+let allOrders = []; // Глобальный массив заказов
+let currentViewedOrder = null; // Текущий открытый заказ
+
+   // Загрузка
+function loadOrders() {
+    const sql = "SELECT * FROM orders ORDER BY timestamp DESC";
+    const jsonResult = window.Android.querySql(DB_NAME, sql);
+    allOrders = JSON.parse(jsonResult);
+    renderOrders();
+}
+
+// Отрисовка списка (на главном экране)
+function renderOrders() {
+    const container = document.getElementById('ordersList');
+    container.innerHTML = '';
+    let totalNet = 0;
+
+    if (allOrders.length === 0) {
+        container.innerHTML = '<p class="text-center text-muted mt-4">Заказов пока нет</p>';
     }
 
-    function renderOrders(orders) {
-        const container = document.getElementById('ordersList');
-        container.innerHTML = '';
-        let totalNet = 0;
+    allOrders.forEach(o => {
+        if (o.is_completed) totalNet += parseFloat(o.net_sum || 0);
 
-        if (orders.length === 0) {
-            container.innerHTML = '<p class="text-center text-muted mt-4">Заказов пока нет</p>';
-        }
+        const dateStr = new Date(o.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const statusBadge = o.is_completed 
+            ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Выполнен</span>' 
+            : '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>В работе</span>';
 
-        orders.forEach(o => {
-            if (o.is_completed) totalNet += parseFloat(o.net_sum || 0);
-
-            const dateStr = new Date(o.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const statusBadge = o.is_completed 
-                ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Выполнен</span>' 
-                : '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>В работе</span>';
-
-            // Экранируем одинарные кавычки для безопасной передачи в onclick
-            const safeOrder = JSON.stringify(o).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
-
-            container.innerHTML += `
-                <div class="card order-card shadow-sm ${o.is_completed ? 'completed' : ''}" onclick="editOrder('${safeOrder}')">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="fw-bold mb-0 text-truncate pe-2" style="max-width: 70%;">${o.address}</h6>
-                            <div class="text-end" style="font-size: 0.75rem;">${dateStr}<br>${statusBadge}</div>
-                        </div>
-                        
-                        <div class="d-flex align-items-center mb-2" style="font-size: 0.9rem;">
-                            <i class="fa-solid fa-user text-muted me-2"></i> ${o.client_name} 
-                            <span class="mx-2 text-muted">•</span> 
-                            <i class="fa-solid fa-phone text-muted me-2"></i> 
-                            <a href="tel:${o.phone}" class="phone-link" onclick="event.stopPropagation()">${o.phone || 'Нет номера'}</a>
-                        </div>
-                        
-                        <p class="text-muted small mb-3 text-truncate">${o.description || 'Нет описания'}</p>
-                        
-                        <div class="financial-row d-flex justify-content-between text-center small">
-                            <div><span class="text-muted d-block" style="font-size: 0.7rem;">Общ</span><strong class="text-dark">${o.total_sum || 0}</strong></div>
-                            <div><span class="text-muted d-block" style="font-size: 0.7rem;">Расх</span><strong class="text-danger">${o.parts_sum || 0}</strong></div>
-                            <div><span class="text-muted d-block" style="font-size: 0.7rem;">Чист</span><strong class="text-success">${o.net_sum || 0}</strong></div>
-                        </div>
+        // ТЕПЕРЬ ПРИ КЛИКЕ ОТКРЫВАЕМ ЭКРАН ДЕТАЛЕЙ ПО ID ЗАКАЗА
+        container.innerHTML += `
+            <div class="card order-card shadow-sm ${o.is_completed ? 'completed' : ''}" onclick="openDetailScreen(${o.id})">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="fw-bold mb-0 text-truncate pe-2" style="max-width: 70%;">${o.address}</h6>
+                        <div class="text-end" style="font-size: 0.75rem;">${dateStr}<br>${statusBadge}</div>
+                    </div>
+                    <div class="d-flex align-items-center mb-2" style="font-size: 0.9rem;">
+                        <i class="fa-solid fa-user text-muted me-2"></i> <span class="text-truncate" style="max-width: 100px;">${o.client_name}</span>
+                        <span class="mx-2 text-muted">•</span> 
+                        <span class="text-primary"><i class="fa-solid fa-phone me-1"></i>${o.phone || 'Нет'}</span>
+                    </div>
+                    <div class="financial-row d-flex justify-content-between text-center small mt-3">
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Общ</span><strong class="text-dark">${o.total_sum || 0}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Расх</span><strong class="text-danger">${o.parts_sum || 0}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Чист</span><strong class="text-success">${o.net_sum || 0}</strong></div>
                     </div>
                 </div>
-            `;
-        });
+            </div>
+        `;
+    });
 
-        document.getElementById('totalNetProfit').innerText = totalNet + ' ₽';
-    }
+    document.getElementById('totalNetProfit').innerText = totalNet + ' ₽';
+}
 
     function calcNet() {
         const total = parseFloat(document.getElementById('orderTotal').value) || 0;
@@ -225,21 +219,43 @@
         document.getElementById('orderNet').innerText = (total - parts) + ' ₽';
     }
 
-    function showOrderModal() {
-        document.getElementById('orderId').value = '';
-        document.getElementById('orderAddress').value = '';
-        document.getElementById('orderClient').value = '';
-        document.getElementById('orderPhone').value = '';
-        document.getElementById('orderDesc').value = '';
-        document.getElementById('orderTotal').value = '';
-        document.getElementById('orderParts').value = '';
-        document.getElementById('orderNet').innerText = '0 ₽';
-        
-        document.getElementById('btnDelete').classList.add('d-none');
+function showOrderModal() {
+    // Для создания нового заказа с главного экрана
+    document.getElementById('orderId').value = '';
+    document.getElementById('orderAddress').value = '';
+    document.getElementById('orderClient').value = '';
+    document.getElementById('orderPhone').value = '';
+    document.getElementById('orderDesc').value = '';
+    document.getElementById('orderTotal').value = '';
+    document.getElementById('orderParts').value = '';
+    document.getElementById('orderNet').innerText = '0 ₽';
+    
+    document.getElementById('btnComplete').classList.remove('d-none');
+    orderModal.show();
+}
+
+function openEditModal() {
+    // Открытие модалки из экрана деталей для редактирования
+    if (!currentViewedOrder) return;
+    const o = currentViewedOrder;
+
+    document.getElementById('orderId').value = o.id;
+    document.getElementById('orderAddress').value = o.address;
+    document.getElementById('orderClient').value = o.client_name;
+    document.getElementById('orderPhone').value = o.phone;
+    document.getElementById('orderDesc').value = o.description;
+    document.getElementById('orderTotal').value = o.total_sum;
+    document.getElementById('orderParts').value = o.parts_sum;
+    calcNet();
+    
+    if (o.is_completed) {
+        document.getElementById('btnComplete').classList.add('d-none');
+    } else {
         document.getElementById('btnComplete').classList.remove('d-none');
-        
-        orderModal.show();
     }
+    
+    orderModal.show();
+}
 
     function editOrder(orderJsonStr) {
         const o = JSON.parse(orderJsonStr);
@@ -316,32 +332,29 @@
         }
     }
 
-    orderModal.hide();
-    loadOrders();
+    // В функции saveOrder(markAsCompleted) в самом конце замените orderModal.hide(); loadOrders(); на:
+// ...
+window.Android.executeSql(DB_NAME, sql);
+// ... логика транзакций ...
+// 
+orderModal.hide();
+loadOrders();
+// // Если мы сохранили заказ, находясь на экране деталей - возвращаемся на главную
+if (!document.getElementById('detailScreen').classList.contains('d-none')) {
+     closeDetailScreen();
+}
 }
 
-    function deleteOrder() {
-    const orderId = document.getElementById('orderId').value;
-    
-    if (!orderId) return;
+function deleteOrder() {
+    if (!currentViewedOrder) return;
+    const orderId = currentViewedOrder.id;
 
     if (confirm("Вы уверены? Будет удален и сам заказ, и все связанные с ним записи в истории финансов.")) {
-        // 1. Удаляем связанные транзакции в таблице финансов по уникальной метке заказа
-        window.Android.executeSql(DB_NAME, `
-            DELETE FROM transactions 
-            WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'
-        `);
-
-        // 2. Удаляем сам заказ из таблицы заказов
+        window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
         window.Android.executeSql(DB_NAME, `DELETE FROM orders WHERE id=${orderId}`);
-
-        // Закрываем модальное окно и обновляем список
-        orderModal.hide();
-        loadOrders();
         
-        if (window.Android && window.Android.log) {
-            window.Android.log("CRM: Заказ " + orderId + " и его транзакции полностью удалены");
-        }
+        closeDetailScreen(); // Возвращаемся на главный экран
+        loadOrders(); // Перезагружаем список
     }
 }
 // Функция поиска контактов (вызывается при вводе в любое из двух полей)
