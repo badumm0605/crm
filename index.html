@@ -379,23 +379,29 @@ document.addEventListener('click', function(e) {
     }
 });
 
-    function handleAddressSearch(query) {
+     function handleAddressSearch(query) {
     const dropdown = document.getElementById('addressSuggestions');
     
-    // Ищем, только если введено больше 1 символа
-    if (!query || query.length < 2) {
+    if (!query || query.trim().length < 2) {
         dropdown.style.display = 'none';
         return;
     }
 
-    // Переводим запрос в нижний регистр для независимого поиска
-    const lowerQuery = query.toLowerCase();
+    // 1. Подготавливаем запрос: переводим в нижний регистр и убираем лишние пробелы
+    const lowerQuery = query.toLowerCase().trim();
     
-    // Фильтруем локальный массив. 
-    // Ограничиваем выдачу до 10 вариантов, чтобы не рисовать бесконечный список
-    const matches = SARATOV_STREETS.filter(street => 
-        street.toLowerCase().includes(lowerQuery)
-    ).slice(0, 10);
+    // 2. Разбиваем запрос на отдельные части (токены) по пробелам. 
+    // "огор ту" превратится в массив ["огор", "ту"]
+    const searchTerms = lowerQuery.split(/\s+/);
+
+    // 3. Фильтруем массив улиц
+    const matches = SARATOV_STREETS.filter(street => {
+        // Убираем тире и точки, чтобы поиск "1 огор" находил "1-й Огородный"
+        const normalizedStreet = street.toLowerCase().replace(/[-.]/g, ' ');
+        
+        // Метод .every() вернет true, только если ВСЕ части запроса найдены в строке
+        return searchTerms.every(term => normalizedStreet.includes(term));
+    }).slice(0, 10); // Оставляем топ-10 совпадений
 
     if (matches.length === 0) {
         dropdown.style.display = 'none';
@@ -405,14 +411,15 @@ document.addEventListener('click', function(e) {
     dropdown.innerHTML = '';
     
     matches.forEach(street => {
-        // Экранируем кавычки на случай, если в названии улицы они есть
         const safeStreet = street.replace(/'/g, "\\'"); 
         
+        // (Опционально) Выделяем жирным совпадения.
+        // Для простоты пока просто выводим улицу, как раньше
         dropdown.innerHTML += `
             <li>
                 <a class="dropdown-item py-2 text-wrap" href="#" onclick="selectAddress('${safeStreet}'); return false;">
                     <i class="fa-solid fa-location-dot text-muted me-2"></i>
-                    <span class="fw-bold">${street}</span>
+                    <span>${street}</span>
                 </a>
             </li>
         `;
