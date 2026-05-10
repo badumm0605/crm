@@ -288,10 +288,16 @@ function loadOrders(reset = false) {
         allOrders = [];
         document.getElementById('ordersList').innerHTML = '';
         
-        try {
+       try {
             const sumSql = "SELECT SUM(net_sum) as total FROM orders WHERE is_completed=1";
             const sumResult = JSON.parse(window.Android.querySql(DB_NAME, sumSql));
-            document.getElementById('totalNetProfit').innerText = (sumResult[0].total || 0) + ' ₽';
+            
+            // Превращаем результат в чистое число
+            const totalNet = Number(sumResult[0].total || 0);
+            
+            // Форматируем по стандартам РФ (будет 16 554 000 вместо 1.6554e+07)
+            document.getElementById('totalNetProfit').innerText = totalNet.toLocaleString('ru-RU') + ' ₽';
+            
         } catch (e) { console.error("Ошибка подсчета прибыли:", e); }
     }
 
