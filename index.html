@@ -356,30 +356,54 @@ function showOrderModal() {
 }
 
 function openEditModal() {
-    if (!currentViewedOrder) return;
-    const o = currentViewedOrder;
+    try {
+        if (!currentViewedOrder) {
+            console.error("Заказ не выбран");
+            return;
+        }
+        const o = currentViewedOrder;
 
-    document.getElementById('orderId').value = o.id;
-    document.getElementById('orderAddress').value = o.address;
-    document.getElementById('orderClient').value = o.client_name;
-    document.getElementById('orderPhone').value = o.phone;
-    document.getElementById('orderDesc').value = o.description;
-    document.getElementById('orderTotal').value = o.total_sum;
-    document.getElementById('orderParts').value = o.parts_sum;
-    calcNet();
-    
-    if (o.is_completed) {
-        document.getElementById('btnComplete').classList.add('d-none');
-    } else {
-        document.getElementById('btnComplete').classList.remove('d-none');
+        // 1. Безопасное присвоение (защита от null). 
+        // Если значения нет, ставим пустую строку '', чтобы поля не писали текст "null"
+        document.getElementById('orderId').value = o.id || '';
+        document.getElementById('orderAddress').value = o.address || '';
+        document.getElementById('orderClient').value = o.client_name || '';
+        document.getElementById('orderPhone').value = o.phone || '';
+        document.getElementById('orderDesc').value = o.description || '';
+        document.getElementById('orderTotal').value = o.total_sum || '';
+        document.getElementById('orderParts').value = o.parts_sum || '';
+        
+        // Пересчитываем чистую прибыль
+        calcNet();
+        
+        // 2. Безопасная проверка кнопки (чтобы скрипт не падал, если кнопка не найдена)
+        const btnComplete = document.getElementById('btnComplete');
+        if (btnComplete) {
+            if (o.is_completed) {
+                btnComplete.classList.add('d-none');
+            } else {
+                btnComplete.classList.remove('d-none');
+            }
+        } else {
+            if (window.Android && window.Android.log) window.Android.log("Кнопка btnComplete не найдена в HTML!");
+        }
+        
+        // Открываем модалку
+        orderModal.show();
+        
+        // 3. Оборачиваем History API в try-catch для защиты от крашей WebView на file:///
+        try {
+            history.pushState({ page: 'modal' }, "Modal", "#modal");
+        } catch (historyErr) {
+            if (window.Android && window.Android.log) window.Android.log("History API заблокирован WebView: " + historyErr.message);
+        }
+        
+    } catch (e) {
+        // Если произойдет любая другая ошибка, мы хотя бы увидим ее в логах Android Studio
+        if (window.Android && window.Android.log) window.Android.log("КРИТИЧЕСКАЯ ОШИБКА openEditModal: " + e.message);
+        alert("Произошла ошибка при открытии: " + e.message);
     }
-    
-    orderModal.show();
-    
-    // ВАЖНО: Добавляем шаг в историю
-    history.pushState({ page: 'modal' }, "Modal", "#modal");
 }
-
 function deleteOrder() {
     if (!currentViewedOrder) return;
     const orderId = currentViewedOrder.id;
