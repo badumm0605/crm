@@ -355,6 +355,15 @@ function showOrderModal() {
     history.pushState({ page: 'modal' }, "Modal", "#modal");
 }
 
+// Функция пересчета чистой прибыли
+function calcNet() {
+    // Получаем значения из полей, если пусто - ставим 0
+    const total = parseFloat(document.getElementById('orderTotal').value) || 0;
+    const parts = parseFloat(document.getElementById('orderParts').value) || 0;
+    
+    // Считаем разницу и записываем в HTML
+    document.getElementById('orderNet').innerText = (total - parts) + ' ₽';
+}
 function openEditModal() {
     try {
         if (!currentViewedOrder) {
