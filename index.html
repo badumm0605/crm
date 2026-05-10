@@ -151,14 +151,39 @@
         </div>
 
         <div class="mb-4">
-            <select id="statsPeriod" class="form-select form-select-lg shadow-sm border-0 fw-bold text-primary" onchange="calculateStats()">
-                <option value="today">Сегодня</option>
-                <option value="week">Текущая неделя</option>
-                <option value="month" selected>Текущий месяц</option>
-                <option value="year">Текущий год</option>
-                <option value="all">За всё время</option>
-            </select>
+    <select id="statsPeriod" class="form-select form-select-lg shadow-sm border-0 fw-bold text-primary mb-2" onchange="togglePeriodSelector()">
+        <option value="today">Сегодня</option>
+        <option value="week">Текущая неделя</option>
+        <option value="month">Текущий месяц</option>
+        <option value="year">Текущий год</option>
+        <option value="custom">Выбрать месяц...</option> <option value="all">За всё время</option>
+    </select>
+
+    <div id="customMonthSelector" class="d-none animate__animated animate__fadeIn">
+        <div class="row g-2">
+            <div class="col-7">
+                <select id="statsMonth" class="form-select border-0 shadow-sm fw-bold" onchange="calculateStats()">
+                    <option value="0">Январь</option>
+                    <option value="1">Февраль</option>
+                    <option value="2">Март</option>
+                    <option value="3">Апрель</option>
+                    <option value="4">Май</option>
+                    <option value="5">Июнь</option>
+                    <option value="6">Июль</option>
+                    <option value="7">Август</option>
+                    <option value="8">Сентябрь</option>
+                    <option value="9">Октябрь</option>
+                    <option value="10">Ноябрь</option>
+                    <option value="11">Декабрь</option>
+                </select>
+            </div>
+            <div class="col-5">
+                <select id="statsYear" class="form-select border-0 shadow-sm fw-bold" onchange="calculateStats()">
+                    </select>
+            </div>
         </div>
+    </div>
+</div>
 
         <div class="row g-3">
             <div class="col-12">
@@ -645,40 +670,71 @@ document.addEventListener('click', function(e) {
 
 
 // === СТАТИСТИКА ===
+// === СТАТИСТИКА (ОБНОВЛЕННАЯ) ===
 
 function openStatsScreen() {
     document.getElementById('mainScreen').classList.add('d-none');
     document.getElementById('statsScreen').classList.remove('d-none');
+    
+    // Заполняем годы при открытии (от 2023 до текущего + 1)
+    const yearSelect = document.getElementById('statsYear');
+    if (yearSelect.options.length === 0) {
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear; y >= 2024; y--) {
+            let opt = document.createElement('option');
+            opt.value = y;
+            opt.innerHTML = y;
+            yearSelect.appendChild(opt);
+        }
+    }
+    
+    // Устанавливаем текущий месяц в селекторах по умолчанию
+    const now = new Date();
+    document.getElementById('statsMonth').value = now.getMonth();
+
     window.scrollTo(0, 0);
     history.pushState({ page: 'stats' }, "Stats", "#stats");
-    
-    calculateStats(); // Запускаем просчет при открытии
+    calculateStats();
 }
 
-function closeStatsScreen() {
-    history.back(); 
+function togglePeriodSelector() {
+    const period = document.getElementById('statsPeriod').value;
+    const customBox = document.getElementById('customMonthSelector');
+    
+    if (period === 'custom') {
+        customBox.classList.remove('d-none');
+    } else {
+        customBox.classList.add('d-none');
+    }
+    calculateStats();
 }
 
 function calculateStats() {
     const period = document.getElementById('statsPeriod').value;
     const now = new Date();
     let startTime = 0;
+    let endTime = 4102444800000; // 2100 год (условно бесконечность)
 
-    // Определяем временные рамки начала периода
     if (period === 'today') {
         startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     } else if (period === 'week') {
-        const day = now.getDay() || 7; // Делаем воскресенье 7-м днем
+        const day = now.getDay() || 7;
         startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime();
     } else if (period === 'month') {
         startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     } else if (period === 'year') {
         startTime = new Date(now.getFullYear(), 0, 1).getTime();
+    } else if (period === 'custom') {
+        // ЛОГИКА ВЫБОРА КОНКРЕТНОГО МЕСЯЦА
+        const selectedMonth = parseInt(document.getElementById('statsMonth').value);
+        const selectedYear = parseInt(document.getElementById('statsYear').value);
+        
+        startTime = new Date(selectedYear, selectedMonth, 1).getTime();
+        // Конец периода — первое число следующего месяца
+        endTime = new Date(selectedYear, selectedMonth + 1, 1).getTime();
     }
 
-    // Делаем агрегационный запрос к SQLite
-    // Считаем: Количество, Сумму_Общую, Сумму_Расходов, Сумму_Чистыми 
-    // ТОЛЬКО для завершенных заказов за выбранный период времени
+    // В SQL запросе добавляем проверку на верхнюю границу (timestamp < endTime)
     const sql = `
         SELECT 
             COUNT(*) as count, 
@@ -686,20 +742,18 @@ function calculateStats() {
             SUM(parts_sum) as parts, 
             SUM(net_sum) as net 
         FROM orders 
-        WHERE is_completed=1 AND timestamp >= ${startTime}
+        WHERE is_completed=1 AND timestamp >= ${startTime} AND timestamp < ${endTime}
     `;
 
     try {
-        const result = JSON.parse(window.Android.querySql(DB_NAME, sql))[0];
+        const res = JSON.parse(window.Android.querySql(DB_NAME, sql))[0];
         
-        const count = Number(result.count || 0);
-        const total = Number(result.total || 0);
-        const parts = Number(result.parts || 0);
-        const net = Number(result.net || 0);
-        // Считаем средний чек чистыми
+        const count = Number(res.count || 0);
+        const total = Number(res.total || 0);
+        const parts = Number(res.parts || 0);
+        const net = Number(res.net || 0);
         const avg = count > 0 ? (net / count) : 0;
 
-        // Вставляем с красивым форматированием (отступы тысяч)
         document.getElementById('statCount').innerText = count.toLocaleString('ru-RU');
         document.getElementById('statTotal').innerText = total.toLocaleString('ru-RU') + ' ₽';
         document.getElementById('statParts').innerText = parts.toLocaleString('ru-RU') + ' ₽';
@@ -707,7 +761,7 @@ function calculateStats() {
         document.getElementById('statAvg').innerText = Math.round(avg).toLocaleString('ru-RU') + ' ₽';
         
     } catch (e) {
-        console.error("Ошибка подсчета статистики:", e);
+        console.error("Ошибка аналитики:", e);
     }
 }
 
