@@ -354,9 +354,9 @@ function renderOrdersChunk(ordersChunk, isReset) {
                         <span class="text-primary"><i class="fa-solid fa-phone me-1"></i>${safePhone}</span>
                     </div>
                     <div class="financial-row d-flex justify-content-between text-center small mt-3">
-                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Общ</span><strong class="text-dark">${o.total_sum || 0}</strong></div>
-                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Расх</span><strong class="text-danger">${o.parts_sum || 0}</strong></div>
-                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Чист</span><strong class="text-success">${o.net_sum || 0}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Общ</span><strong class="text-dark">${Number(o.total_sum || 0).toLocaleString('ru-RU')}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Расх</span><strong class="text-danger">${Number(o.parts_sum || 0).toLocaleString('ru-RU')}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Чист</span><strong class="text-success">${Number(o.net_sum || 0).toLocaleString('ru-RU')}</strong></div>
                     </div>
                 </div>
             </div>
@@ -384,9 +384,9 @@ function openDetailScreen(orderId) {
     document.getElementById('detPhone').innerText = o.phone || 'Не указан';
     document.getElementById('detPhoneBtn').href = o.phone ? `tel:${o.phone}` : '#';
     document.getElementById('detDesc').innerText = o.description || 'Нет описания';
-    document.getElementById('detTotal').innerText = (o.total_sum || 0) + ' ₽';
-    document.getElementById('detParts').innerText = (o.parts_sum || 0) + ' ₽';
-    document.getElementById('detNet').innerText = (o.net_sum || 0) + ' ₽';
+    document.getElementById('detTotal').innerText = Number(o.total_sum || 0).toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('detParts').innerText = Number(o.parts_sum || 0).toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('detNet').innerText = Number(o.net_sum || 0).toLocaleString('ru-RU') + ' ₽';
     document.getElementById('detDate').innerText = new Date(o.timestamp).toLocaleDateString('ru-RU');
     document.getElementById('detStatus').innerHTML = o.is_completed ? '<span class="badge bg-success">Выполнен</span>' : '<span class="badge bg-warning text-dark">В работе (Черновик)</span>';
 
