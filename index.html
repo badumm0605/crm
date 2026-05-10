@@ -266,54 +266,59 @@
     }
 
     function saveOrder(markAsCompleted) {
-        const idInput = document.getElementById('orderId').value;
-        const orderId = idInput ? parseInt(idInput) : Date.now(); // Генерируем ID
-        
-        // Экранируем кавычки для SQL
-        const address = document.getElementById('orderAddress').value.replace(/'/g, "''");
-        const client = document.getElementById('orderClient').value.replace(/'/g, "''");
-        const phone = document.getElementById('orderPhone').value.replace(/'/g, "''");
-        const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
-        
-        const total = parseFloat(document.getElementById('orderTotal').value) || 0;
-        const parts = parseFloat(document.getElementById('orderParts').value) || 0;
-        const net = total - parts;
-        const isCompleted = markAsCompleted ? 1 : 0;
-        const ts = idInput ? Date.now() : orderId; // Если новый, ts = orderId
+    const idInput = document.getElementById('orderId').value;
+    const orderId = idInput ? parseInt(idInput) : Date.now(); // Генерируем уникальный ID заказа
+    
+    // Экранируем кавычки для SQL
+    const address = document.getElementById('orderAddress').value.replace(/'/g, "''");
+    const client = document.getElementById('orderClient').value.replace(/'/g, "''");
+    const phone = document.getElementById('orderPhone').value.replace(/'/g, "''");
+    const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
+    
+    const total = parseFloat(document.getElementById('orderTotal').value) || 0;
+    const parts = parseFloat(document.getElementById('orderParts').value) || 0;
+    const net = total - parts;
+    const isCompleted = markAsCompleted ? 1 : 0;
+    const ts = idInput ? Date.now() : orderId;
 
-        let sql;
-        if (idInput) {
-            sql = `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, is_completed=${isCompleted} WHERE id=${orderId}`;
-        } else {
-            sql = `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, is_completed) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, ${isCompleted})`;
-        }
-        
-        window.Android.executeSql(DB_NAME, sql);
-
-        // --- ИНТЕГРАЦИЯ С ФИНАНСАМИ ---
-        // Если мастер нажал "Завершить заказ", мы пробрасываем данные в таблицу transactions
-        if (markAsCompleted) {
-            // 1. Добавляем общий доход
-            if (total > 0) {
-                const incomeNote = `[Заказ CRM] ${address}`;
-                window.Android.executeSql(DB_NAME, `
-                    INSERT INTO transactions (type, amount, category, note, timestamp, source_app) 
-                    VALUES ('income', ${total}, 'Услуги ремонта', '${incomeNote}', ${Date.now()}, 'crm')
-                `);
-            }
-            // 2. Добавляем расход на запчасти
-            if (parts > 0) {
-                const expenseNote = `[Запчасти] ${address}`;
-                window.Android.executeSql(DB_NAME, `
-                    INSERT INTO transactions (type, amount, category, note, timestamp, source_app) 
-                    VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '${expenseNote}', ${Date.now() + 1000}, 'crm')
-                `);
-            }
-        }
-
-        orderModal.hide();
-        loadOrders();
+    // 1. Сохраняем или обновляем сам заказ в таблице orders
+    let sql;
+    if (idInput) {
+        sql = `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, is_completed=${isCompleted} WHERE id=${orderId}`;
+    } else {
+        sql = `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, is_completed) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, ${isCompleted})`;
     }
+    window.Android.executeSql(DB_NAME, sql);
+
+    // --- ИНТЕГРАЦИЯ С ФИНАНСАМИ (ИСПРАВЛЕНИЕ БАГА) ---
+    
+    // 2. ВСЕГДА удаляем старые финансовые записи, привязанные к этому orderId.
+    // Это стирает историю, если мы переводим заказ обратно в черновик,
+    // и очищает место для новых сумм, если мы просто редактируем завершенный заказ.
+    window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
+
+    // 3. Создаем свежие финансовые записи, только если статус "Завершен"
+    if (markAsCompleted) {
+        if (total > 0) {
+            // Прячем orderId в заметку, чтобы потом легко находить и удалять
+            const incomeNote = `[CRM-${orderId}] ${address}`;
+            window.Android.executeSql(DB_NAME, `
+                INSERT INTO transactions (type, amount, category, note, timestamp, source_app) 
+                VALUES ('income', ${total}, 'Услуги ремонта', '${incomeNote}', ${Date.now()}, 'crm')
+            `);
+        }
+        if (parts > 0) {
+            const expenseNote = `[CRM-${orderId}] Запчасти: ${address}`;
+            window.Android.executeSql(DB_NAME, `
+                INSERT INTO transactions (type, amount, category, note, timestamp, source_app) 
+                VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '${expenseNote}', ${Date.now() + 1000}, 'crm')
+            `);
+        }
+    }
+
+    orderModal.hide();
+    loadOrders();
+}
 
     function deleteOrder() {
         const orderId = document.getElementById('orderId').value;
