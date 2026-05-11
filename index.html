@@ -85,16 +85,17 @@
         </div>
 
         <ul class="nav nav-pills nav-fill mb-3 bg-white rounded-3 shadow-sm p-1" id="orderTabs" style="border: 1px solid #dee2e6;">
+            <ul class="nav nav-pills nav-fill mb-3 bg-white rounded-3 shadow-sm p-1" id="orderTabs" style="border: 1px solid #dee2e6;">
             <li class="nav-item">
-                <a class="nav-link active fw-bold rounded-3" href="#" id="tabActive" onclick="setFilter('active'); return false;">
-                    В работе
-                </a>
+                <a class="nav-link active fw-bold rounded-3" href="#" id="tab_active" onclick="setFilter('active'); return false;">В работе</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link fw-bold rounded-3 text-muted" href="#" id="tabCompleted" onclick="setFilter('completed'); return false;">
-                    Завершенные
-                </a>
+                <a class="nav-link fw-bold rounded-3 text-muted" href="#" id="tab_completed" onclick="setFilter('completed'); return false;">Готовые</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link fw-bold rounded-3 text-muted" href="#" id="tab_failed" onclick="setFilter('failed'); return false;">Отказы</a>
+            </li>
+        </ul>
         </ul>
 
         <div class="alert alert-warning mt-4 shadow-sm border-0">
@@ -250,7 +251,40 @@
                 </div>
             </div>
         </div>
+<div class="row g-2 mt-2">
+            <div class="col-6">
+                <div class="card border-0 shadow-sm bg-white">
+                    <div class="card-body p-3">
+                        <small class="text-muted d-block mb-1">Всего заявок</small>
+                        <h5 class="fw-bold mb-0 text-dark" id="statAllLeads">0</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card border-0 shadow-sm bg-white">
+                    <div class="card-body p-3">
+                        <small class="text-muted d-block mb-1">Цена заявки (CPL)</small>
+                        <h5 class="fw-bold mb-0 text-primary" id="statCPL">0 ₽</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body p-3">
+                <h6 class="text-muted fw-bold mb-2">Конверсия</h6>
+                <div class="progress" style="height: 25px; border-radius: 12px;">
+                    <div id="pbCompleted" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
+                    <div id="pbFailed" class="progress-bar bg-danger fw-bold" style="width: 0%">0%</div>
+                    <div id="pbActive" class="progress-bar bg-warning text-dark fw-bold" style="width: 0%">0%</div>
+                </div>
+                <div class="d-flex justify-content-between mt-2 small fw-bold">
+                    <span class="text-success"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i>Успех</span>
+                    <span class="text-danger"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i>Отказ/Отмена</span>
+                    <span class="text-warning"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i>В работе</span>
+                </div>
+            </div>
+        </div>
         <div id="crmChartContainer" class="card border-0 shadow-sm mb-4 mt-4 chart-container-card d-none">
             <div class="card-body p-2 pt-3">
                 <h6 class="text-muted fw-bold mb-3 px-2 text-center" id="chartTitle">Динамика заказов</h6>
@@ -328,12 +362,16 @@
                     </div>
                 </div>
 
-                <button class="btn btn-primary w-100 py-3 rounded-3 fw-bold mb-2" onclick="saveOrder(false)">
-                    Сохранить черновик
-                </button>
-                <button class="btn btn-success w-100 py-3 rounded-3 fw-bold" onclick="saveOrder(true)" id="btnComplete">
-                    <i class="fa-solid fa-check-double me-2"></i>Завершить заказ
-                </button>
+                <div class="mb-3">
+                    <label class="form-label text-muted small mb-1">Статус заказа</label>
+                    <select id="orderStatus" class="form-select form-select-lg fw-bold">
+                        <option value="active">⏳ В работе (Черновик)</option>
+                        <option value="completed">✅ Выполнен успешно</option>
+                        <option value="refused">❌ Отказ (не устроила цена и т.д.)</option>
+                        <option value="cancelled">🚫 Отмена (до приезда)</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary w-100 py-3 rounded-3 fw-bold mb-2" onclick="saveOrder()">Сохранить изменения</button>
             </div>
         </div>
     </div>
@@ -450,7 +488,12 @@ function initDb() {
             category TEXT, note TEXT, timestamp INTEGER, source_app TEXT DEFAULT 'finance'
         )
     `);
-
+// Нам нужно добавить колонку status вместо старой логики is_completed (чтобы ничего не сломать, мы аккуратно обновим старые данные).
+    try { 
+        window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'active'`); 
+        // Обновляем старые записи под новую систему
+        window.Android.executeSql(DB_NAME, `UPDATE orders SET status = 'completed' WHERE is_completed = 1 AND status = 'active'`);
+    } catch(e) {}
     loadOrders(true);
 }
 
@@ -466,26 +509,18 @@ function handleSearch(query) {
 // === ПАГИНАЦИЯ И ФИЛЬТРАЦИЯ ===
 function setFilter(filterType) {
     if (currentFilter === filterType) return;
-    
     currentFilter = filterType;
-    const tabActive = document.getElementById('tabActive');
-    const tabCompleted = document.getElementById('tabCompleted');
     
-    if (filterType === 'active') {
-        tabActive.classList.add('active', 'text-dark');
-        tabActive.classList.remove('text-muted');
-        tabCompleted.classList.remove('active', 'text-dark');
-        tabCompleted.classList.add('text-muted');
-    } else {
-        tabCompleted.classList.add('active', 'text-dark');
-        tabCompleted.classList.remove('text-muted');
-        tabActive.classList.remove('active', 'text-dark');
-        tabActive.classList.add('text-muted');
-    }
-    
+    ['active', 'completed', 'failed'].forEach(f => {
+        const tab = document.getElementById('tab_' + f);
+        if (f === filterType) {
+            tab.classList.add('active', 'text-dark'); tab.classList.remove('text-muted');
+        } else {
+            tab.classList.remove('active', 'text-dark'); tab.classList.add('text-muted');
+        }
+    });
     loadOrders(true);
 }
-
 function loadOrders(reset = false) {
     if (reset) {
         currentOffset = 0;
@@ -504,7 +539,16 @@ function loadOrders(reset = false) {
     if (!hasMoreData || isLoading) return;
     isLoading = true;
 
-    const isCompleted = currentFilter === 'completed' ? 1 : 0;
+    let statusCondition = '';
+    if (currentFilter === 'active') statusCondition = "status='active'";
+    else if (currentFilter === 'completed') statusCondition = "status='completed'";
+    else if (currentFilter === 'failed') statusCondition = "status IN ('refused', 'cancelled')";
+
+    let sqlCondition = statusCondition;
+    if (searchQuery) {
+        sqlCondition += ` AND (LOWER(address) LIKE '%${searchQuery}%' OR phone LIKE '%${searchQuery}%' OR LOWER(client_name) LIKE '%${searchQuery}%' OR LOWER(description) LIKE '%${searchQuery}%')`;
+    }
+    const sql = `SELECT * FROM orders WHERE ${sqlCondition} ORDER BY timestamp DESC LIMIT ${LOAD_LIMIT} OFFSET ${currentOffset}`;
     
     // Формируем SQL запрос с учетом поиска
     let sqlCondition = `is_completed=${isCompleted}`;
@@ -554,15 +598,18 @@ function renderOrdersChunk(ordersChunk, containerId, isReset) {
     let htmlChunk = '';
     ordersChunk.forEach(o => {
         const dateStr = new Date(o.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const statusBadge = o.is_completed 
-            ? '<span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Выполнен</span>' 
-            : '<span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>В работе</span>';
-
+        // В renderOrdersChunk замените блок статуса (statusBadge):
+        let statusBadge = '';
+        let cardColor = '';
+        if (o.status === 'completed') { statusBadge = '<span class="badge bg-success">Выполнен</span>'; cardColor = 'border-left-color: #198754; opacity: 0.9;'; }
+        else if (o.status === 'refused') { statusBadge = '<span class="badge bg-danger">Отказ</span>'; cardColor = 'border-left-color: #dc3545; opacity: 0.8;'; }
+        else if (o.status === 'cancelled') { statusBadge = '<span class="badge bg-secondary">Отмена</span>'; cardColor = 'border-left-color: #6c757d; opacity: 0.7;'; }
+        else { statusBadge = '<span class="badge bg-warning text-dark">В работе</span>'; cardColor = 'border-left-color: #ffc107;'; }
         const safeClient = o.client_name ? o.client_name.replace(/'/g, "&apos;") : 'Не указан';
         const safePhone = o.phone ? o.phone.replace(/'/g, "&apos;") : 'Нет';
 
         htmlChunk += `
-            <div class="card order-card shadow-sm ${o.is_completed ? 'completed' : ''}" onclick="openDetailScreen(${o.id})">
+            <div class="card order-card shadow-sm" style="${cardColor}" onclick="openDetailScreen(${o.id})">
                 <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <h6 class="fw-bold mb-0 text-truncate pe-2" style="max-width: 70%;">${o.address}</h6>
@@ -675,6 +722,7 @@ function openEditModal() {
         orderModal.show();
         try { history.pushState({ page: 'modal' }, "Modal", "#modal"); } catch(e) {}
     } catch (e) { alert("Ошибка: " + e.message); }
+    document.getElementById('orderStatus').value = o.status || 'active';
 }
 
 function calcNet() {
@@ -695,38 +743,37 @@ function deleteOrder() {
     }
 }
 
-function saveOrder(markAsCompleted) {
+// Полностью замените функцию saveOrder:
+function saveOrder() {
     const idInput = document.getElementById('orderId').value;
     const orderId = idInput ? parseInt(idInput) : Date.now();
-    
     const address = document.getElementById('orderAddress').value.replace(/'/g, "''");
     const client = document.getElementById('orderClient').value.replace(/'/g, "''");
     const phone = document.getElementById('orderPhone').value.replace(/'/g, "''");
     const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
-    
     const total = parseFloat(document.getElementById('orderTotal').value) || 0;
     const parts = parseFloat(document.getElementById('orderParts').value) || 0;
     const net = total - parts;
-    const isCompleted = markAsCompleted ? 1 : 0;
+    
+    const status = document.getElementById('orderStatus').value; // Новый статус
     const ts = idInput ? Date.now() : orderId;
 
     let sql = idInput 
-        ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, is_completed=${isCompleted} WHERE id=${orderId}`
-        : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, is_completed) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, ${isCompleted})`;
+        ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, status='${status}' WHERE id=${orderId}`
+        : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, '${status}')`;
     
     window.Android.executeSql(DB_NAME, sql);
     window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
 
-    if (markAsCompleted) {
+    // Транзакции в Финансы пишем ТОЛЬКО если статус Выполнен
+    if (status === 'completed') {
         if (total > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${total}, 'Услуги ремонта', '[CRM-${orderId}] ${address}', ${Date.now()}, 'crm')`);
         if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
     }
 
     orderModal.hide();
     loadOrders(true);
-    if (!document.getElementById('detailScreen').classList.contains('d-none')) {
-        closeDetailScreen();
-    }
+    if (!document.getElementById('detailScreen').classList.contains('d-none')) closeDetailScreen();
 }
 
 // === ПОИСК КОНТАКТОВ / АДРЕСОВ ===
@@ -1050,46 +1097,53 @@ function calculateStats() {
     const range = getStatsDateRange();
 
     // Передаем точные timestamp в SQL запрос
-    const sql = `SELECT * FROM orders WHERE is_completed=1 AND timestamp >= ${range.startTime} AND timestamp < ${range.endTime} ORDER BY timestamp ASC`;
-
+    const sql = `SELECT * FROM orders WHERE timestamp >= ${range.startTime} AND timestamp < ${endTime} ORDER BY timestamp ASC`;
+    const adSql = `SELECT SUM(amount) as ad_total FROM transactions WHERE type='expense' AND category='Реклама' AND timestamp >= ${range.startTime} AND timestamp < ${endTime}`;
     try {
         const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
+        const adResult = JSON.parse(window.Android.querySql(DB_NAME, adSql));
+        const adSpend = Number(adResult[0].ad_total || 0);
         
-        let count = 0;
-        let total = 0;
-        let parts = 0;
-        let net = 0;
-        
+        let countCompleted = 0, countFailed = 0, countActive = 0, totalLeads = rows.length;
+        let total = 0, parts = 0, net = 0;
         let chartDataMap = {};
 
         rows.forEach(r => {
-            count++;
-            total += parseFloat(r.total_sum || 0);
-            parts += parseFloat(r.parts_sum || 0);
-            net += parseFloat(r.net_sum || 0);
-
-            // Группировка для графика (по дням или по месяцам)
-            let d = new Date(r.timestamp);
-            let key = range.chartType === 'daily' 
-                ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
-                : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-            
-            if (!chartDataMap[key]) chartDataMap[key] = { period: key, total: 0, parts: 0, net: 0 };
-            
-            chartDataMap[key].total += parseFloat(r.total_sum || 0);
-            chartDataMap[key].parts += parseFloat(r.parts_sum || 0);
-            chartDataMap[key].net += parseFloat(r.net_sum || 0);
+            if (r.status === 'completed') {
+                countCompleted++;
+                total += parseFloat(r.total_sum || 0);
+                parts += parseFloat(r.parts_sum || 0);
+                net += parseFloat(r.net_sum || 0);
+                
+                // В график добавляем только успешные
+                let d = new Date(r.timestamp);
+                let key = range.chartType === 'daily' ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                if (!chartDataMap[key]) chartDataMap[key] = { period: key, total: 0, parts: 0, net: 0 };
+                chartDataMap[key].total += parseFloat(r.total_sum || 0);
+                chartDataMap[key].parts += parseFloat(r.parts_sum || 0);
+                chartDataMap[key].net += parseFloat(r.net_sum || 0);
+            } else if (r.status === 'refused' || r.status === 'cancelled') {
+                countFailed++;
+            } else {
+                countActive++;
+            }
         });
 
-        const avg = count > 0 ? (net / count) : 0;
+        // Расчет CPL (Всего потрачено на рекламу / Общее кол-во заявок)
+        const cpl = totalLeads > 0 ? (adSpend / totalLeads) : 0;
+        
+        // Расчет процентов
+        const percComp = totalLeads > 0 ? Math.round((countCompleted / totalLeads) * 100) : 0;
+        const percFail = totalLeads > 0 ? Math.round((countFailed / totalLeads) * 100) : 0;
+        const percAct = totalLeads > 0 ? (100 - percComp - percFail) : 0; // Остаток
 
-        // Выводим цифры в карточки
-        document.getElementById('statCount').innerText = count.toLocaleString('ru-RU');
-        document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
-        document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
-        document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
-        document.getElementById('statAvg').innerText = Math.round(avg).toLocaleString('ru-RU') + ' ₽';
-
+        document.getElementById('statAllLeads').innerText = totalLeads.toLocaleString('ru-RU');
+        document.getElementById('statCPL').innerText = Math.round(cpl).toLocaleString('ru-RU') + ' ₽';
+        
+        document.getElementById('pbCompleted').style.width = percComp + '%'; document.getElementById('pbCompleted').innerText = percComp > 5 ? percComp + '%' : '';
+        document.getElementById('pbFailed').style.width = percFail + '%'; document.getElementById('pbFailed').innerText = percFail > 5 ? percFail + '%' : '';
+        document.getElementById('pbActive').style.width = percAct + '%'; document.getElementById('pbActive').innerText = percAct > 5 ? percAct + '%' : '';
+        
         // ОТРИСОВКА ГРАФИКА
         const chartContainerNode = document.getElementById('crmChartContainer');
         if (!range.showLineChart || Object.keys(chartDataMap).length === 0) {
