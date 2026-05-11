@@ -1137,11 +1137,17 @@ function generateTestData() {
 }
 
 function clearDatabase() {
-    if (!confirm("ВНИМАНИЕ! База будет очищена. Вы уверены?")) return;
-    window.Android.executeSql(DB_NAME, "DELETE FROM orders");
-    window.Android.executeSql(DB_NAME, "DELETE FROM transactions WHERE source_app='crm'");
+    if (!confirm("Удалить только тестовые заказы? Ваши реальные заказы останутся в безопасности.")) return;
+    
+    // Удаляем из базы ТОЛЬКО те заказы, у которых описание строго 'Тестовый'
+    window.Android.executeSql(DB_NAME, "DELETE FROM orders WHERE description = 'Тестовый'");
+    
     loadOrders(true);
-    if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
+    if (!document.getElementById('statsScreen').classList.contains('d-none')) {
+        triggerCalculateStats();
+    }
+    
+    alert("Тестовые данные успешно удалены!");
 }
 
 // === ЗАПУСК ===
