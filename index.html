@@ -265,7 +265,10 @@
                 </div>
             </div>
         </div>
+        <h6 class="text-muted fw-bold mb-3 px-1 mt-5 border-top pt-4">Заказы за выбранный период</h6>
+        <div id="statsOrdersList" class="d-flex flex-column gap-3 mb-5"></div>
     </div>
+
 </div>
 
 <div class="modal fade" id="orderModal" tabindex="-1">
@@ -382,7 +385,10 @@ let currentOffset = 0;
 const LOAD_LIMIT = 20;        
 let isLoading = false;        
 let hasMoreData = true;       
-
+// Переменные пагинации для Аналитики
+let statsOffset = 0;
+let statsIsLoading = false;
+let statsHasMoreData = true;
 // Поиск
 let searchQuery = "";
 let searchTimeout = null;
@@ -517,17 +523,22 @@ function loadOrders(reset = false) {
         allOrders = allOrders.concat(newOrders);
         currentOffset += newOrders.length;
         
-        renderOrdersChunk(newOrders, reset);
+        renderOrdersChunk(newOrders, 'ordersList', reset);
     } catch (e) { console.error("Ошибка при загрузке:", e); }
     
     isLoading = false;
 }
 
-function renderOrdersChunk(ordersChunk, isReset) {
-    const container = document.getElementById('ordersList');
+function renderOrdersChunk(ordersChunk, containerId, isReset) {
+    const container = document.getElementById(containerId);
 
     if (isReset && ordersChunk.length === 0) {
-        const emptyText = searchQuery ? 'По вашему запросу ничего не найдено' : (currentFilter === 'active' ? 'Нет заказов в работе' : 'Нет завершенных заказов');
+        let emptyText = "Нет заказов";
+        if (containerId === 'ordersList') {
+            emptyText = (typeof searchQuery !== 'undefined' && searchQuery) ? 'По вашему запросу ничего не найдено' : (currentFilter === 'active' ? 'Нет заказов в работе' : 'Нет завершенных заказов');
+        } else {
+            emptyText = 'Нет завершенных заказов за выбранный период';
+        }
         container.innerHTML = `<p class="text-center text-muted mt-4">${emptyText}</p>`;
         return;
     }
@@ -573,16 +584,19 @@ window.addEventListener('scroll', () => {
     const mainFabBtn = document.querySelector('.fab'); 
     
     if (window.scrollY > 300) {
-        scrollTopBtn.classList.add('visible');      
+        if(scrollTopBtn) scrollTopBtn.classList.add('visible');      
         if(mainFabBtn) mainFabBtn.classList.add('fab-hidden'); 
     } else {
-        scrollTopBtn.classList.remove('visible');   
+        if(scrollTopBtn) scrollTopBtn.classList.remove('visible');   
         if(mainFabBtn) mainFabBtn.classList.remove('fab-hidden'); 
     }
 
-    if (document.getElementById('mainScreen').classList.contains('d-none')) return;
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
-        loadOrders(false);
+        if (!document.getElementById('mainScreen').classList.contains('d-none')) {
+            loadOrders(false);
+        } else if (!document.getElementById('statsScreen').classList.contains('d-none')) {
+            loadStatsOrders(false);
+        }
     }
 });
 
@@ -982,7 +996,36 @@ function triggerCalculateStats() {
         document.getElementById('loadingOverlay').classList.add('d-none');
     }, 50);
 }
+function loadStatsOrders(reset = false) {
+    if (reset) {
+        statsOffset = 0;
+        statsHasMoreData = true;
+        allOrders = []; // Сбрасываем массив, чтобы модалка деталей открывала новые заказы
+        document.getElementById('statsOrdersList').innerHTML = '';
+    }
 
+    if (!statsHasMoreData || statsIsLoading) return;
+    statsIsLoading = true;
+
+    const range = getStatsDateRange();
+    
+    // В аналитике берем только завершенные заказы за выбранный период (как на графике)
+    const sql = `SELECT * FROM orders WHERE is_completed=1 AND timestamp >= ${range.startTime} AND timestamp < ${range.endTime} ORDER BY timestamp DESC LIMIT ${LOAD_LIMIT} OFFSET ${statsOffset}`;
+    
+    try {
+        const jsonResult = window.Android.querySql(DB_NAME, sql);
+        const newOrders = JSON.parse(jsonResult);
+        
+        if (newOrders.length < LOAD_LIMIT) statsHasMoreData = false;
+        
+        allOrders = allOrders.concat(newOrders);
+        statsOffset += newOrders.length;
+        
+        renderOrdersChunk(newOrders, 'statsOrdersList', reset);
+    } catch (e) { console.error("Ошибка при загрузке стат-заказов:", e); }
+    
+    statsIsLoading = false;
+}
 function calculateStats() {
     // Получаем точные даты и настройки графика из нашего нового хелпера
     const range = getStatsDateRange();
