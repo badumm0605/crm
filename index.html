@@ -184,14 +184,14 @@
                     <option value="lastMonth">Прошлый месяц</option>
                     <option value="year">Этот год</option>
                     <option value="custom">Выбрать месяц...</option>
-                    <option value="range">Свой период...</option> 
+                    <option value="range">Свой период (с... по...)</option> 
                     <option value="all">За всё время</option>
                 </select>
             </div>
             <div class="col-5">
                 <select id="statsMaster" class="form-select border-0 shadow-sm fw-bold text-dark" onchange="triggerCalculateStats()">
                     <option value="all">Все мастера</option>
-                    </select>
+                </select>
             </div>
         </div>
 
@@ -350,7 +350,7 @@
             </div>
         </div>
 
-        <h6 class="text-muted fw-bold mb-3 px-1 mt-4 border-top pt-4">Заказы за период</h6>
+        <h6 class="text-muted fw-bold mb-3 px-1 mt-4 border-top pt-4">Заказы за выбранный период</h6>
         <ul class="nav horizontal-tabs mb-3 px-1" id="statsTabs">
             <li class="nav-item"><a class="nav-link active shadow-sm" href="#" id="st_all" onclick="setStatsFilter('all'); return false;">Все <span class="badge" id="sc_all">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_completed" onclick="setStatsFilter('completed'); return false;">Выполнены <span class="badge" id="sc_completed">0</span></a></li>
@@ -436,13 +436,13 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-0 pb-0">
-                <h6 class="modal-title fw-bold">Расходы на рекламу (за период)</h6>
+                <h6 class="modal-title fw-bold">Расходы на рекламу</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="small text-muted mb-3">Отметьте галочками те категории из приложения "Финансы", которые нужно считать как затраты на привлечение клиентов.</p>
+                <p class="small text-muted mb-3">Здесь отображаются списания с ваших целевых счетов (рекламных кабинетов) за выбранный период. Эти суммы формируют стоимость заявки (CPL).</p>
                 <div id="cplDetailsList" class="d-flex flex-column gap-2 mb-3"></div>
-                <button class="btn btn-primary w-100 fw-bold shadow-sm" data-bs-dismiss="modal">Готово</button>
+                <button class="btn btn-primary w-100 fw-bold shadow-sm" data-bs-dismiss="modal">Понятно</button>
             </div>
         </div>
     </div>
@@ -519,16 +519,15 @@ const LOAD_LIMIT = 20;
 let isLoading = false;        
 let hasMoreData = true;       
 
+// Аналитика
 let statsCurrentFilter = 'all'; 
 let statsOffset = 0;
 let statsIsLoading = false;
 let statsHasMoreData = true;
 
+// Поиск
 let searchQuery = "";
 let searchTimeout = null;
-
-// Категории рекламы из LocalStorage
-let adCategories = JSON.parse(localStorage.getItem('crmAdCategories')) || ['Реклама', 'Авито', 'Директ'];
 
 // === ПЕРЕХВАТ НАЗАД ===
 window.addEventListener('popstate', function(event) {
@@ -567,7 +566,21 @@ function initDb() {
             timestamp INTEGER, status TEXT DEFAULT 'active', closed_timestamp INTEGER, master_id INTEGER DEFAULT 0
         )
     `);
-    window.Android.executeSql(DB_NAME, `CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, amount REAL, category TEXT, note TEXT, timestamp INTEGER, source_app TEXT DEFAULT 'finance')`);
+    
+    window.Android.executeSql(DB_NAME, `
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, amount REAL, 
+            category TEXT, note TEXT, timestamp INTEGER, source_app TEXT DEFAULT 'finance', account_id INTEGER DEFAULT 1
+        )
+    `);
+
+    // Создаем таблицу счетов, если CRM открыли раньше Финансов
+    window.Android.executeSql(DB_NAME, `
+        CREATE TABLE IF NOT EXISTS accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type TEXT, is_target INTEGER DEFAULT 0
+        )
+    `);
+
     window.Android.executeSql(DB_NAME, `CREATE TABLE IF NOT EXISTS masters (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`);
 
     try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'active'`); window.Android.executeSql(DB_NAME, `UPDATE orders SET status = 'completed' WHERE is_completed = 1 AND status = 'active'`); } catch(e) {}
@@ -581,9 +594,7 @@ function initDb() {
 
 // === МАСТЕРА ===
 function loadMasters() {
-    try {
-        allMasters = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM masters ORDER BY name ASC"));
-    } catch(e) { allMasters = []; }
+    try { allMasters = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM masters ORDER BY name ASC")); } catch(e) { allMasters = []; }
     
     const omSelect = document.getElementById('orderMaster');
     omSelect.innerHTML = '<option value="0">Не выбран</option>';
@@ -596,10 +607,7 @@ function loadMasters() {
     const list = document.getElementById('mastersList');
     list.innerHTML = '';
     allMasters.forEach(m => {
-        list.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center py-3">
-            <span class="fw-bold">${m.name}</span>
-            <button class="btn btn-outline-danger btn-sm rounded-circle" onclick="deleteMaster(${m.id})"><i class="fa-solid fa-trash"></i></button>
-        </li>`;
+        list.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center py-3"><span class="fw-bold">${m.name}</span><button class="btn btn-outline-danger btn-sm rounded-circle" onclick="deleteMaster(${m.id})"><i class="fa-solid fa-trash"></i></button></li>`;
     });
 }
 function openMastersModal() { new bootstrap.Modal(document.getElementById('mastersModal')).show(); }
@@ -642,8 +650,7 @@ function setMainFilter(filterType) {
     currentMainFilter = filterType;
     ['active', 'completed', 'refused', 'cancelled'].forEach(f => {
         const tab = document.getElementById('tab_' + f);
-        if (f === filterType) tab.classList.add('active', 'shadow-sm');
-        else tab.classList.remove('active', 'shadow-sm');
+        if (f === filterType) tab.classList.add('active', 'shadow-sm'); else tab.classList.remove('active', 'shadow-sm');
     });
     loadOrders(true);
 }
@@ -745,6 +752,7 @@ function renderOrdersChunk(ordersChunk, containerId, isReset) {
     container.insertAdjacentHTML('beforeend', htmlChunk);
 }
 
+// === СКРОЛЛ ===
 window.addEventListener('scroll', () => {
     const scrollTopBtn = document.getElementById('scrollTopBtn');
     const mainFabBtn = document.querySelector('.fab'); 
@@ -757,7 +765,7 @@ window.addEventListener('scroll', () => {
 });
 function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-// === ЭКРАНЫ И МОДАЛКИ ===
+// === ЭКРАНЫ И МОДАЛКИ ЗАКАЗОВ ===
 function openDetailScreen(orderId) {
     currentViewedOrder = allOrders.find(o => o.id === orderId);
     if (!currentViewedOrder) return;
@@ -800,38 +808,28 @@ function openDetailScreen(orderId) {
 function closeDetailScreen() { history.back(); }
 
 function showOrderModal() {
-    document.getElementById('orderId').value = '';
-    document.getElementById('orderAddress').value = '';
-    document.getElementById('orderClient').value = '';
-    document.getElementById('orderPhone').value = '';
-    document.getElementById('orderDesc').value = '';
-    document.getElementById('orderTotal').value = '';
-    document.getElementById('orderParts').value = '';
-    document.getElementById('orderNet').innerText = '0 ₽';
+    document.getElementById('orderId').value = ''; document.getElementById('orderAddress').value = '';
+    document.getElementById('orderClient').value = ''; document.getElementById('orderPhone').value = '';
+    document.getElementById('orderDesc').value = ''; document.getElementById('orderTotal').value = '';
+    document.getElementById('orderParts').value = ''; document.getElementById('orderNet').innerText = '0 ₽';
     document.getElementById('orderStatus').value = 'active';
     
     const masterSelect = document.getElementById('orderMaster');
-    if(allMasters.length > 0) { masterSelect.value = allMasters[allMasters.length-1].id; } // Последний добавленный
+    if(allMasters.length > 0) masterSelect.value = allMasters[allMasters.length-1].id;
     
-    orderModal.show();
-    history.pushState({ page: 'modal' }, "Modal", "#modal");
+    orderModal.show(); history.pushState({ page: 'modal' }, "Modal", "#modal");
 }
 
 function openEditModal() {
     try {
         if (!currentViewedOrder) return;
         const o = currentViewedOrder;
-        document.getElementById('orderId').value = o.id || '';
-        document.getElementById('orderAddress').value = o.address || '';
-        document.getElementById('orderClient').value = o.client_name || '';
-        document.getElementById('orderPhone').value = o.phone || '';
-        document.getElementById('orderDesc').value = o.description || '';
-        document.getElementById('orderTotal').value = o.total_sum || '';
-        document.getElementById('orderParts').value = o.parts_sum || '';
-        document.getElementById('orderStatus').value = o.status || 'active';
+        document.getElementById('orderId').value = o.id || ''; document.getElementById('orderAddress').value = o.address || '';
+        document.getElementById('orderClient').value = o.client_name || ''; document.getElementById('orderPhone').value = o.phone || '';
+        document.getElementById('orderDesc').value = o.description || ''; document.getElementById('orderTotal').value = o.total_sum || '';
+        document.getElementById('orderParts').value = o.parts_sum || ''; document.getElementById('orderStatus').value = o.status || 'active';
         document.getElementById('orderMaster').value = o.master_id || 0;
-        calcNet();
-        orderModal.show();
+        calcNet(); orderModal.show();
         try { history.pushState({ page: 'modal' }, "Modal", "#modal"); } catch(e) {}
     } catch (e) {}
 }
@@ -849,23 +847,18 @@ function deleteOrder() {
         window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
         window.Android.executeSql(DB_NAME, `DELETE FROM orders WHERE id=${orderId}`);
         updateGlobalCounters();
-        loadOrders(true); 
         if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
+        else loadOrders(true); 
         history.back(); 
     }
 }
 
 function saveOrder() {
-    const idInput = document.getElementById('orderId').value;
-    const orderId = idInput ? parseInt(idInput) : Date.now();
-    const address = document.getElementById('orderAddress').value.replace(/'/g, "''");
-    const client = document.getElementById('orderClient').value.replace(/'/g, "''");
-    const phone = document.getElementById('orderPhone').value.replace(/'/g, "''");
-    const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
-    const total = parseFloat(document.getElementById('orderTotal').value) || 0;
-    const parts = parseFloat(document.getElementById('orderParts').value) || 0;
-    const net = total - parts;
-    const status = document.getElementById('orderStatus').value;
+    const idInput = document.getElementById('orderId').value; const orderId = idInput ? parseInt(idInput) : Date.now();
+    const address = document.getElementById('orderAddress').value.replace(/'/g, "''"); const client = document.getElementById('orderClient').value.replace(/'/g, "''");
+    const phone = document.getElementById('orderPhone').value.replace(/'/g, "''"); const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
+    const total = parseFloat(document.getElementById('orderTotal').value) || 0; const parts = parseFloat(document.getElementById('orderParts').value) || 0;
+    const net = total - parts; const status = document.getElementById('orderStatus').value;
     const masterId = parseInt(document.getElementById('orderMaster').value) || 0;
 
     let closedTs = 'NULL';
@@ -888,8 +881,8 @@ function saveOrder() {
         if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
     }
 
-    orderModal.hide();
-    updateGlobalCounters();
+    orderModal.hide(); updateGlobalCounters();
+    
     if (!document.getElementById('mainScreen').classList.contains('d-none')) loadOrders(true); 
     else if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
     if (!document.getElementById('detailScreen').classList.contains('d-none')) closeDetailScreen();
@@ -939,12 +932,9 @@ function openStatsScreen() {
     document.getElementById('statsScreen').classList.remove('d-none');
     
     const yearSelect = document.getElementById('statsYear');
-    if (yearSelect.options.length === 0) {
-        for (let y = new Date().getFullYear(); y >= 2023; y--) yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
-    }
+    if (yearSelect.options.length === 0) { for (let y = new Date().getFullYear(); y >= 2023; y--) yearSelect.innerHTML += `<option value="${y}">${y}</option>`; }
     document.getElementById('statsMonth').value = new Date().getMonth();
-    window.scrollTo(0, 0);
-    history.pushState({ page: 'stats' }, "Stats", "#stats");
+    window.scrollTo(0, 0); history.pushState({ page: 'stats' }, "Stats", "#stats");
     triggerCalculateStats();
 }
 
@@ -953,24 +943,16 @@ function closeStatsScreen() { history.back(); }
 let rangeModal = null; let calCurrentDate = new Date(); let rangeStart = null; let rangeEnd = null; let dbMinTs = null; let dbMaxTs = null; let finalRangeStart = null; let finalRangeEnd = null;
 
 function togglePeriodSelector() {
-    const period = document.getElementById('statsPeriod').value;
-    const customBox = document.getElementById('customMonthSelector');
-    const rangeInfo = document.getElementById('rangeSelectedInfo');
-    
-    customBox.classList.add('d-none');
-    if (rangeInfo) rangeInfo.classList.add('d-none');
-    
+    const period = document.getElementById('statsPeriod').value; const customBox = document.getElementById('customMonthSelector'); const rangeInfo = document.getElementById('rangeSelectedInfo');
+    customBox.classList.add('d-none'); if (rangeInfo) rangeInfo.classList.add('d-none');
     if (period === 'custom') { customBox.classList.remove('d-none'); triggerCalculateStats(); } 
     else if (period === 'range') { if (rangeInfo) rangeInfo.classList.remove('d-none'); openDateRangeModal(); } 
     else { triggerCalculateStats(); }
 }
 
 function getStatsDateRange() {
-    const period = document.getElementById('statsPeriod').value;
-    const now = new Date();
-    let startTime = 0, endTime = 4102444800000;
-    let showLineChart = true; let chartType = 'daily'; 
-
+    const period = document.getElementById('statsPeriod').value; const now = new Date();
+    let startTime = 0, endTime = 4102444800000; let showLineChart = true; let chartType = 'daily'; 
     if (period === 'today') { startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); showLineChart = false; } 
     else if (period === '24h') { startTime = now.getTime() - (24 * 60 * 60 * 1000); showLineChart = false; } 
     else if (period === 'week') { const day = now.getDay() || 7; startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime(); } 
@@ -993,7 +975,6 @@ function openDateRangeModal() {
         if (res[0] && res[0].minTs) { dbMinTs = new Date(res[0].minTs).setHours(0,0,0,0); dbMaxTs = new Date(res[0].maxTs).setHours(23,59,59,999); } 
         else { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
     } catch(e) { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
-
     rangeStart = null; rangeEnd = null; document.getElementById('btnApplyRange').disabled = true; calCurrentDate = new Date(dbMaxTs); 
     renderCalendar(); rangeModal.show();
 }
@@ -1004,8 +985,7 @@ function renderCalendar() {
     const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
     let offset = firstDay === 0 ? 6 : firstDay - 1; 
 
-    let html = '';
-    for(let i = 0; i < offset; i++) html += `<div class="cal-day disabled"></div>`;
+    let html = ''; for(let i = 0; i < offset; i++) html += `<div class="cal-day disabled"></div>`;
     for(let d = 1; d <= daysInMonth; d++) {
         let tsStart = new Date(year, month, d).setHours(0,0,0,0); let tsEnd = new Date(year, month, d).setHours(23,59,59,999);
         let isOut = (tsEnd < dbMinTs || tsStart > dbMaxTs); let cls = 'cal-day';
@@ -1033,9 +1013,7 @@ function applyDateRange() {
     document.getElementById('rangeBtnText').innerText = `${startStr} - ${endStr}`;
     rangeModal.hide(); triggerCalculateStats();
 }
-function cancelDateRange() {
-    if (!finalRangeStart || !finalRangeEnd) { document.getElementById('statsPeriod').value = 'month'; togglePeriodSelector(); }
-}
+function cancelDateRange() { if (!finalRangeStart || !finalRangeEnd) { document.getElementById('statsPeriod').value = 'month'; togglePeriodSelector(); } }
 
 function triggerCalculateStats() {
     document.getElementById('loadingOverlay').classList.remove('d-none');
@@ -1045,23 +1023,15 @@ function triggerCalculateStats() {
 function calculateActiveAging() {
     try {
         const masterSql = document.getElementById('statsMaster').value !== 'all' ? ` AND master_id=${document.getElementById('statsMaster').value} ` : '';
-        const now = new Date();
-        const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        const weekTs = todayTs - 6 * 86400000;
+        const now = new Date(); const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); const weekTs = todayTs - 6 * 86400000;
         const monthTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-        const yearTs = new Date(now.getFullYear(), 0, 1).getTime();
         
         const sql = `SELECT timestamp FROM orders WHERE status='active' ${masterSql}`;
         const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
-        
         const range = getStatsDateRange();
         let aTotal=0, aToday=0, aWeek=0, aMonth=0, aPeriod=0;
         rows.forEach(r => {
-            aTotal++;
-            if (r.timestamp >= todayTs) aToday++;
-            if (r.timestamp >= weekTs) aWeek++;
-            if (r.timestamp >= monthTs) aMonth++;
-            if (r.timestamp >= range.startTime && r.timestamp < range.endTime) aPeriod++;
+            aTotal++; if (r.timestamp >= todayTs) aToday++; if (r.timestamp >= weekTs) aWeek++; if (r.timestamp >= monthTs) aMonth++; if (r.timestamp >= range.startTime && r.timestamp < range.endTime) aPeriod++;
         });
 
         document.getElementById('agTotal').innerText = aTotal.toLocaleString('ru-RU');
@@ -1072,38 +1042,36 @@ function calculateActiveAging() {
     } catch(e) {}
 }
 
-// === CPL И РАСХОДЫ ===
+// === CPL И РЕКЛАМА ИЗ ФИНАНСОВ ===
 function openCplModal() {
     const range = getStatsDateRange();
-    // Находим все расходы из Финансов за этот период
-    const sql = `SELECT category, SUM(amount) as sum FROM transactions WHERE type='expense' AND source_app='finance' AND timestamp >= ${range.startTime} AND timestamp < ${range.endTime} GROUP BY category ORDER BY sum DESC`;
+    // Ищем траты со счетов, помеченных как is_target=1 в Финансах
+    const sql = `
+        SELECT a.name, SUM(t.amount) as sum 
+        FROM transactions t 
+        JOIN accounts a ON t.account_id = a.id 
+        WHERE t.type='expense' AND a.is_target=1 AND t.timestamp >= ${range.startTime} AND t.timestamp < ${range.endTime} 
+        GROUP BY a.name 
+        ORDER BY sum DESC
+    `;
     
     let html = '';
     try {
         const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
         rows.forEach(r => {
-            const isChecked = adCategories.includes(r.category) ? 'checked' : '';
             html += `
             <div class="d-flex justify-content-between align-items-center mb-2 p-3 border rounded bg-light">
-                <div class="form-check form-switch fs-6 mb-0">
-                    <input class="form-check-input ad-cat-check" type="checkbox" value="${r.category}" id="cat_${r.category}" ${isChecked} onchange="updateAdCategories()">
-                    <label class="form-check-label ms-2 fw-bold" for="cat_${r.category}">${r.category}</label>
-                </div>
+                <span class="fw-bold text-dark"><i class="fa-solid fa-bullseye text-danger me-2"></i>${r.name}</span>
                 <span class="fw-bold text-danger">${Number(r.sum).toLocaleString('ru-RU')} ₽</span>
             </div>`;
         });
-        if(rows.length === 0) html = '<p class="text-muted text-center py-4">Нет расходов в "Финансах" за выбранный период.</p>';
-    } catch(e) {}
+        if(rows.length === 0) html = '<p class="text-muted text-center py-4">Нет списаний с целевых счетов за этот период.</p>';
+    } catch(e) {
+        html = '<p class="text-muted text-center py-4">Нет данных или таблица счетов не настроена.</p>';
+    }
     
     document.getElementById('cplDetailsList').innerHTML = html;
     new bootstrap.Modal(document.getElementById('cplModal')).show();
-}
-
-function updateAdCategories() {
-    const checks = document.querySelectorAll('.ad-cat-check:checked');
-    adCategories = Array.from(checks).map(c => c.value);
-    localStorage.setItem('crmAdCategories', JSON.stringify(adCategories));
-    triggerCalculateStats(); // Мгновенный пересчет после изменения галочек
 }
 
 function calculateStats() {
@@ -1114,22 +1082,22 @@ function calculateStats() {
 
     const sql = `SELECT * FROM orders WHERE timestamp >= ${range.startTime} AND timestamp < ${range.endTime} ${masterSql} ORDER BY timestamp ASC`;
     
-    // Считаем рекламу только по выбранным категориям
-    let adCatsSql = adCategories.map(c => `'${c}'`).join(',');
-    const adSql = `SELECT SUM(amount) as ad_total FROM transactions WHERE type='expense' AND source_app='finance' AND category IN (${adCatsSql || "''"}) AND timestamp >= ${range.startTime} AND timestamp < ${range.endTime}`;
+    // Считаем расходы на рекламу ТОЛЬКО со счетов is_target=1
+    const adSql = `
+        SELECT SUM(t.amount) as ad_total 
+        FROM transactions t 
+        JOIN accounts a ON t.account_id = a.id 
+        WHERE t.type='expense' AND a.is_target=1 AND t.timestamp >= ${range.startTime} AND t.timestamp < ${range.endTime}
+    `;
     
     try {
         const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
         
         let adSpend = 0;
-        try {
-            const adResult = JSON.parse(window.Android.querySql(DB_NAME, adSql));
-            adSpend = Number(adResult[0].ad_total || 0);
-        } catch(e){}
+        try { const adResult = JSON.parse(window.Android.querySql(DB_NAME, adSql)); adSpend = Number(adResult[0].ad_total || 0); } catch(e){}
         
         let countCompleted = 0, countRefused = 0, countCancelled = 0, countActive = 0, totalLeads = rows.length;
         let total = 0, parts = 0, net = 0;
-        
         let bU5 = 0, b5to8 = 0, b8to10 = 0, b10to20 = 0, bO20 = 0;
         let chartDataMap = {};
 
@@ -1146,9 +1114,7 @@ function calculateStats() {
                 let d = new Date(r.timestamp);
                 let key = range.chartType === 'daily' ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
                 if (!chartDataMap[key]) chartDataMap[key] = { period: key, total: 0, parts: 0, net: 0 };
-                chartDataMap[key].total += parseFloat(r.total_sum || 0);
-                chartDataMap[key].parts += parseFloat(r.parts_sum || 0);
-                chartDataMap[key].net += parseFloat(r.net_sum || 0);
+                chartDataMap[key].total += parseFloat(r.total_sum || 0); chartDataMap[key].parts += parseFloat(r.parts_sum || 0); chartDataMap[key].net += parseFloat(r.net_sum || 0);
             } else if (r.status === 'refused') {
                 countRefused++;
                 net += parseFloat(r.net_sum || 0); 
@@ -1159,7 +1125,6 @@ function calculateStats() {
             }
         });
 
-        // БЛОК 1: Общая воронка
         const countFailedTot = countRefused + countCancelled;
         const perc1Comp = totalLeads > 0 ? Math.round((countCompleted / totalLeads) * 100) : 0;
         const perc1Fail = totalLeads > 0 ? Math.round((countFailedTot / totalLeads) * 100) : 0;
@@ -1168,7 +1133,6 @@ function calculateStats() {
         document.getElementById('pb1Fail').style.width = perc1Fail + '%'; document.getElementById('pb1Fail').innerText = perc1Fail > 5 ? perc1Fail + '%' : '';
         document.getElementById('pb1Act').style.width = perc1Act + '%'; document.getElementById('pb1Act').innerText = perc1Act > 5 ? perc1Act + '%' : '';
 
-        // БЛОК 2: Чистая конверсия (только закрытые: Выполнены / Отказ / Отмена)
         const closedLeads = countCompleted + countRefused + countCancelled;
         const perc2Comp = closedLeads > 0 ? Math.round((countCompleted / closedLeads) * 100) : 0;
         const perc2Ref = closedLeads > 0 ? Math.round((countRefused / closedLeads) * 100) : 0;
@@ -1177,27 +1141,18 @@ function calculateStats() {
         document.getElementById('pb2Ref').style.width = perc2Ref + '%'; document.getElementById('pb2Ref').innerText = perc2Ref > 5 ? perc2Ref + '%' : '';
         document.getElementById('pb2Canc').style.width = perc2Canc + '%'; document.getElementById('pb2Canc').innerText = perc2Canc > 5 ? perc2Canc + '%' : '';
 
-        // БЛОК 3: Корзины
         const bTot = countCompleted;
-        if (bTot === 0) {
-            document.getElementById('revenueBucketsCard').classList.add('d-none');
-        } else {
+        if (bTot === 0) document.getElementById('revenueBucketsCard').classList.add('d-none');
+        else {
             document.getElementById('revenueBucketsCard').classList.remove('d-none');
             const pU5 = Math.round((bU5 / bTot) * 100); const p5to8 = Math.round((b5to8 / bTot) * 100);
             const p8to10 = Math.round((b8to10 / bTot) * 100); const p10to20 = Math.round((b10to20 / bTot) * 100);
             const pO20 = 100 - pU5 - p5to8 - p8to10 - p10to20;
-
-            const setupBucket = (id, perc) => {
-                const el = document.getElementById('pb3_' + id); const lg = document.getElementById('lg_' + id);
-                el.style.width = perc + '%'; el.innerText = perc > 5 ? perc + '%' : '';
-                if (perc > 0) lg.classList.remove('d-none'); else lg.classList.add('d-none');
-            };
+            const setupBucket = (id, perc) => { const el = document.getElementById('pb3_' + id); const lg = document.getElementById('lg_' + id); el.style.width = perc + '%'; el.innerText = perc > 5 ? perc + '%' : ''; if (perc > 0) lg.classList.remove('d-none'); else lg.classList.add('d-none'); };
             setupBucket('u5', pU5); setupBucket('5to8', p5to8); setupBucket('8to10', p8to10); setupBucket('10to20', p10to20); setupBucket('o20', pO20);
         }
 
         const cpl = totalLeads > 0 ? (adSpend / totalLeads) : 0;
-        
-        // Средний чек: (чистыми с выполненных и отказов) / (выполненные + отказы)
         const avgBase = countCompleted + countRefused;
         const avg = avgBase > 0 ? (net / avgBase) : 0;
 
@@ -1208,33 +1163,18 @@ function calculateStats() {
         document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
         document.getElementById('statAvg').innerText = Math.round(avg).toLocaleString('ru-RU') + ' ₽';
 
-        // Обновление счетчиков вкладок
-        document.getElementById('sc_all').innerText = totalLeads;
-        document.getElementById('sc_completed').innerText = countCompleted;
-        document.getElementById('sc_refused').innerText = countRefused;
-        document.getElementById('sc_cancelled').innerText = countCancelled;
-        document.getElementById('sc_active').innerText = countActive;
+        document.getElementById('sc_all').innerText = totalLeads; document.getElementById('sc_completed').innerText = countCompleted; document.getElementById('sc_refused').innerText = countRefused; document.getElementById('sc_cancelled').innerText = countCancelled; document.getElementById('sc_active').innerText = countActive;
 
         const chartContainerNode = document.getElementById('crmChartContainer');
-        if (!range.showLineChart || Object.keys(chartDataMap).length === 0) {
-            chartContainerNode.classList.add('d-none');
-        } else {
-            chartContainerNode.classList.remove('d-none');
-            let chartArray = Object.values(chartDataMap);
+        if (!range.showLineChart || Object.keys(chartDataMap).length === 0) chartContainerNode.classList.add('d-none');
+        else {
+            chartContainerNode.classList.remove('d-none'); let chartArray = Object.values(chartDataMap);
             document.getElementById('chartTitle').innerText = range.chartType === 'daily' ? 'Динамика прибыли по дням' : 'Динамика прибыли по месяцам';
             document.getElementById('crmChart').innerHTML = ''; 
             if (window.Morris) {
                 new Morris.Line({
-                    element: 'crmChart', data: chartArray, xkey: 'period', ykeys: ['total', 'net', 'parts'], labels: ['Выручка', 'Чистая', 'Расход'],
-                    lineColors: ['#0d6efd', '#198754', '#dc3545'], hideHover: 'auto', resize: true, parseTime: false, 
-                    hoverCallback: function (index, options, content, row) {
-                        return `<div class="p-2 fw-bold bg-white shadow-sm border rounded" style="z-index:1000">
-                                    <div class="mb-1 text-dark border-bottom pb-1">${row.period}</div>
-                                    <div style="color: #0d6efd">Выручка: ${Number(row.total).toLocaleString('ru-RU')} ₽</div>
-                                    <div style="color: #198754">Чистая: ${Number(row.net).toLocaleString('ru-RU')} ₽</div>
-                                    <div style="color: #dc3545">Расход: ${Number(row.parts).toLocaleString('ru-RU')} ₽</div>
-                                </div>`;
-                    }
+                    element: 'crmChart', data: chartArray, xkey: 'period', ykeys: ['total', 'net', 'parts'], labels: ['Выручка', 'Чистая', 'Расход'], lineColors: ['#0d6efd', '#198754', '#dc3545'], hideHover: 'auto', resize: true, parseTime: false, 
+                    hoverCallback: function (index, options, content, row) { return `<div class="p-2 fw-bold bg-white shadow-sm border rounded" style="z-index:1000"><div class="mb-1 text-dark border-bottom pb-1">${row.period}</div><div style="color: #0d6efd">Выручка: ${Number(row.total).toLocaleString('ru-RU')} ₽</div><div style="color: #198754">Чистая: ${Number(row.net).toLocaleString('ru-RU')} ₽</div><div style="color: #dc3545">Расход: ${Number(row.parts).toLocaleString('ru-RU')} ₽</div></div>`; }
                 });
             }
         }
@@ -1248,7 +1188,6 @@ function generateTestData() {
     const btn = document.getElementById('btnGenerate'); btn.disabled = true; btn.innerText = "Идет генерация...";
     const names = ["Александр", "Елена", "Максим", "Ольга", "Иван", "Анна", "Сергей", "Наталья"];
     let totalInserted = 0;
-    
     function insertBatch() {
         let sql = "INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id) VALUES ";
         let values = [];
@@ -1258,31 +1197,18 @@ function generateTestData() {
             const address = street + ", д. " + Math.floor(Math.random() * 150 + 1);
             const name = names[Math.floor(Math.random() * names.length)];
             const phone = "89" + Math.floor(100000000 + Math.random() * 900000000);
-            
-            const total = Math.floor(Math.random() * 250) * 100 + 1000; 
-            const parts = Math.floor(Math.random() * 15) * 100;
+            const total = Math.floor(Math.random() * 250) * 100 + 1000; const parts = Math.floor(Math.random() * 15) * 100;
             const masterId = allMasters.length ? allMasters[Math.floor(Math.random() * allMasters.length)].id : 0;
-            
-            const rand = Math.random();
-            let status = 'completed';
+            const rand = Math.random(); let status = 'completed';
             if (rand < 0.2) status = 'active'; else if (rand < 0.3) status = 'refused'; else if (rand < 0.4) status = 'cancelled';
-            
             const ts = Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000); 
             const closedTs = status !== 'active' ? ts + (Math.floor(Math.random() * 5 * 86400000)) : 'NULL';
-
             values.push(`(${id}, '${address}', '${name}', '${phone}', 'Тестовый', ${total}, ${parts}, ${total-parts}, ${ts}, '${status}', ${closedTs}, ${masterId})`);
         }
         window.Android.executeSql(DB_NAME, sql + values.join(", "));
         totalInserted += 500;
-        
-        if (totalInserted < 10000) {
-            btn.innerText = `Добавлено: ${totalInserted} / 10000`; setTimeout(insertBatch, 20);
-        } else {
-            btn.disabled = false; btn.innerText = "Сгенерировать 10 000 заказов";
-            updateGlobalCounters(); loadOrders(true);
-            if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
-            alert("Успешно добавлено!");
-        }
+        if (totalInserted < 10000) { btn.innerText = `Добавлено: ${totalInserted} / 10000`; setTimeout(insertBatch, 20); } 
+        else { btn.disabled = false; btn.innerText = "Сгенерировать 10 000 заказов"; updateGlobalCounters(); loadOrders(true); if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats(); alert("Успешно добавлено!"); }
     }
     insertBatch();
 }
