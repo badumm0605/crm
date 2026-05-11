@@ -80,7 +80,7 @@
             <li class="nav-item"><a class="nav-link active shadow-sm" href="#" id="tab_scheduled" onclick="setMainFilter('scheduled'); return false;">Ожидают <span class="badge text-primary" id="mc_scheduled">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_active" onclick="setMainFilter('active'); return false;">В работе <span class="badge" id="mc_active">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_completed" onclick="setMainFilter('completed'); return false;">Ремонт <span class="badge" id="mc_completed">0</span></a></li>
-            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_diagnostic" onclick="setMainFilter('diagnostic'); return false;">Выезды <span class="badge" id="mc_diagnostic">0</span></a></li>
+            
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_warranty" onclick="setMainFilter('warranty'); return false;">Гарантия <span class="badge" id="mc_warranty">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_refused" onclick="setMainFilter('refused'); return false;">Отказы <span class="badge" id="mc_refused">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_cancelled" onclick="setMainFilter('cancelled'); return false;">Отмены <span class="badge" id="mc_cancelled">0</span></a></li>
@@ -343,12 +343,21 @@
         <div class="col-12 mb-4">
             <h6 class="text-muted fw-bold mb-3 px-1">Показатели эффективности</h6>
             <div class="card border-0 shadow-sm mb-3">
-                <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-muted fw-bold d-block">Средний чек (чист):</span>
-                        <small class="text-muted" style="font-size:0.65rem">(Только Полноценные Ремонты)</small>
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                        <div>
+                            <span class="text-muted fw-bold d-block">Средний чек (Без отмен):</span>
+                            <small class="text-muted" style="font-size:0.65rem">Только выполненные ремонты</small>
+                        </div>
+                        <span class="fs-5 fw-bold text-success" id="statAvgCompleted">0 ₽</span>
                     </div>
-                    <span class="fs-4 fw-bold text-primary" id="statAvg">0 ₽</span>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted fw-bold d-block">Средний чек (С отменами):</span>
+                            <small class="text-muted" style="font-size:0.65rem">Ремонты + Платные/бесплатные отказы</small>
+                        </div>
+                        <span class="fs-5 fw-bold text-primary" id="statAvgTotal">0 ₽</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -359,7 +368,7 @@
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_scheduled" onclick="setStatsFilter('scheduled'); return false;">Ожидают <span class="badge text-primary" id="sc_scheduled">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_active" onclick="setStatsFilter('active'); return false;">В работе <span class="badge" id="sc_active">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_completed" onclick="setStatsFilter('completed'); return false;">Ремонт <span class="badge" id="sc_completed">0</span></a></li>
-            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_diagnostic" onclick="setStatsFilter('diagnostic'); return false;">Выезды <span class="badge" id="sc_diagnostic">0</span></a></li>
+            
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_warranty" onclick="setStatsFilter('warranty'); return false;">Гарантия <span class="badge" id="sc_warranty">0</span></a></li>
         </ul>
 
@@ -438,7 +447,6 @@
                         <option value="scheduled">📅 Ожидает (Новая заявка)</option>
                         <option value="active">⏳ В работе (У мастера)</option>
                         <option value="completed">✅ Выполнен успешно (Ремонт)</option>
-                        <option value="diagnostic">🔍 Платный выезд / Диагностика</option>
                         <option value="warranty">🛡️ Гарантийный выезд</option>
                         <option value="refused">❌ Отказ (не устроила цена и т.д.)</option>
                         <option value="cancelled">🚫 Отмена (до приезда)</option>
@@ -641,7 +649,6 @@ function updateGlobalCounters() {
         res.forEach(r => { counts[r.status] = r.c; });
         document.getElementById('mc_active').innerText = counts.active;
         document.getElementById('mc_completed').innerText = counts.completed;
-        document.getElementById('mc_diagnostic').innerText = counts.diagnostic;
         document.getElementById('mc_warranty').innerText = counts.warranty;
         document.getElementById('mc_refused').innerText = counts.refused;
         document.getElementById('mc_cancelled').innerText = counts.cancelled;
@@ -657,7 +664,7 @@ function handleSearch(query) {
 function setMainFilter(filterType) {
     if (currentMainFilter === filterType) return;
     currentMainFilter = filterType;
-    ['scheduled', 'active', 'completed', 'diagnostic', 'warranty', 'refused', 'cancelled'].forEach(f => {
+    ['scheduled', 'active', 'completed', 'warranty', 'refused', 'cancelled'].forEach(f => {
         const tab = document.getElementById('tab_' + f);
         if (f === filterType) tab.classList.add('active', 'shadow-sm'); else tab.classList.remove('active', 'shadow-sm');
     });
@@ -694,7 +701,7 @@ function loadOrders(reset = false) {
 function setStatsFilter(filterType) {
     if (statsCurrentFilter === filterType) return;
     statsCurrentFilter = filterType;
-    ['all', 'scheduled', 'completed', 'diagnostic', 'warranty', 'refused', 'cancelled', 'active'].forEach(f => {
+    ['all', 'scheduled', 'completed', 'warranty', 'refused', 'cancelled', 'active'].forEach(f => {
         const tab = document.getElementById('st_' + f);
         if(!tab) return;
         if (f === filterType) tab.classList.add('active'); else tab.classList.remove('active');
@@ -738,7 +745,6 @@ function renderOrdersChunk(ordersChunk, containerId, isReset) {
             else dateHtml = `<span class="text-primary fw-bold">Без времени</span>`;
         }
         else if (o.status === 'completed') { statusBadge = '<span class="badge bg-success">Ремонт</span>'; cardColor = 'completed'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
-        else if (o.status === 'diagnostic') { statusBadge = '<span class="badge bg-info text-dark">Платный выезд</span>'; cardColor = 'diagnostic'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
         else if (o.status === 'warranty') { statusBadge = '<span class="badge bg-purple" style="background-color: #6f42c1;">Гарантия</span>'; cardColor = 'warranty'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
         else if (o.status === 'refused') { statusBadge = '<span class="badge bg-danger">Отказ</span>'; cardColor = 'refused'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
         else if (o.status === 'cancelled') { statusBadge = '<span class="badge bg-secondary">Отмена</span>'; cardColor = 'cancelled'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
@@ -917,9 +923,12 @@ function saveOrder() {
     window.Android.executeSql(DB_NAME, sql);
     window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
 
-    // В финансы отправляем только завершенные дела (Ремонт, Диагностика, Гарантия - если там были деньги)
-    if (status === 'completed' || status === 'diagnostic' || status === 'warranty') {
-        let noteCategory = status === 'warranty' ? 'Гарантийный выезд' : (status === 'diagnostic' ? 'Платный выезд' : 'Услуги ремонта');
+    // В финансы отправляем завершенные ремонты, гарантию, а также отказы/отмены, если клиент оплатил выезд (total > 0)
+    if (status === 'completed' || status === 'warranty' || status === 'refused' || status === 'cancelled') {
+        let noteCategory = 'Услуги ремонта';
+        if (status === 'warranty') noteCategory = 'Гарантийный выезд';
+        else if (status === 'refused' || status === 'cancelled') noteCategory = 'Платный отказ / Выезд';
+        
         if (total > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${total}, '${noteCategory}', '[CRM-${orderId}] ${address}', ${Date.now()}, 'crm')`);
         if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
     }
@@ -1113,40 +1122,43 @@ function calculateStats() {
         let adSpend = 0;
         try { const adResult = JSON.parse(window.Android.querySql(DB_NAME, adSql)); adSpend = Number(adResult[0].ad_total || 0); } catch(e){}
         
-        let countCompleted = 0, countDiagnostic = 0, countWarranty = 0, countRefused = 0, countCancelled = 0, countActive = 0, countScheduled = 0;
-        let totalLeads = 0; // Исключаем гарантию из лидов
+        let countCompleted = 0, countWarranty = 0, countRefused = 0, countCancelled = 0, countActive = 0, countScheduled = 0;
+        let totalLeads = 0; 
         let total = 0, parts = 0, net = 0;
+        let netCompleted = 0; // Для подсчета "чистого" среднего чека
         let bU5 = 0, b5to8 = 0, b8to10 = 0, b10to20 = 0, bO20 = 0;
         let chartDataMap = {};
 
         rows.forEach(r => {
-            if (r.status !== 'warranty') totalLeads++; // Считаем лиды
+            if (r.status !== 'warranty') totalLeads++; // Считаем все лиды, кроме гарантии
 
-            if (r.status === 'completed' || r.status === 'diagnostic' || r.status === 'warranty') {
-                if (r.status === 'completed') countCompleted++;
-                if (r.status === 'diagnostic') countDiagnostic++;
-                if (r.status === 'warranty') countWarranty++;
+            // Считаем финансы со всех закрытых заказов (Ремонт, Отказы с деньгами, Гарантия)
+            if (r.status === 'completed' || r.status === 'warranty' || r.status === 'refused' || r.status === 'cancelled') {
+                const rTotal = parseFloat(r.total_sum || 0);
+                const rParts = parseFloat(r.parts_sum || 0);
+                const rNet = parseFloat(r.net_sum || 0);
 
-                total += parseFloat(r.total_sum || 0);
-                parts += parseFloat(r.parts_sum || 0);
-                net += parseFloat(r.net_sum || 0);
-                
-                // Корзины чеков ТОЛЬКО для полноценных ремонтов
+                total += rTotal;
+                parts += rParts;
+                net += rNet;
+
                 if (r.status === 'completed') {
-                    let rTot = parseFloat(r.total_sum || 0);
-                    if (rTot < 5000) bU5++; else if (rTot < 8000) b5to8++; else if (rTot < 10000) b8to10++; else if (rTot < 20000) b10to20++; else bO20++;
+                    countCompleted++;
+                    netCompleted += rNet; // Собираем чистую прибыль только с ремонтов
+                    if (rTotal < 5000) bU5++; else if (rTotal < 8000) b5to8++; else if (rTotal < 10000) b8to10++; else if (rTotal < 20000) b10to20++; else bO20++;
+                } else if (r.status === 'warranty') {
+                    countWarranty++;
+                } else if (r.status === 'refused') {
+                    countRefused++;
+                } else if (r.status === 'cancelled') {
+                    countCancelled++;
                 }
 
+                // В график отправляем вообще все деньги за этот день
                 let d = new Date(r.timestamp);
                 let key = range.chartType === 'daily' ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
                 if (!chartDataMap[key]) chartDataMap[key] = { period: key, total: 0, parts: 0, net: 0 };
-                chartDataMap[key].total += parseFloat(r.total_sum || 0); chartDataMap[key].parts += parseFloat(r.parts_sum || 0); chartDataMap[key].net += parseFloat(r.net_sum || 0);
-            } else if (r.status === 'refused') {
-                countRefused++;
-                // Для отказов тоже можем учитывать траты/чистую, если они есть (например, минус на бензин)
-                net += parseFloat(r.net_sum || 0); 
-            } else if (r.status === 'cancelled') {
-                countCancelled++;
+                chartDataMap[key].total += rTotal; chartDataMap[key].parts += rParts; chartDataMap[key].net += rNet;
             } else if (r.status === 'scheduled') {
                 countScheduled++;
             } else {
@@ -1154,12 +1166,9 @@ function calculateStats() {
             }
         });
 
-        // БЛОК 1: Общая воронка (Без гарантии, так как это не воронка лида)
+        // БЛОК 1: Общая воронка
         const countFailedTot = countRefused + countCancelled;
-        const countPendingTot = countActive + countScheduled;
-        const countSuccessTot = countCompleted + countDiagnostic;
-
-        const perc1Comp = totalLeads > 0 ? Math.round((countSuccessTot / totalLeads) * 100) : 0;
+        const perc1Comp = totalLeads > 0 ? Math.round((countCompleted / totalLeads) * 100) : 0;
         const perc1Fail = totalLeads > 0 ? Math.round((countFailedTot / totalLeads) * 100) : 0;
         const perc1Act = totalLeads > 0 ? (100 - perc1Comp - perc1Fail) : 0; 
         document.getElementById('pb1Comp').style.width = perc1Comp + '%'; document.getElementById('pb1Comp').innerText = perc1Comp > 5 ? perc1Comp + '%' : '';
@@ -1167,15 +1176,15 @@ function calculateStats() {
         document.getElementById('pb1Act').style.width = perc1Act + '%'; document.getElementById('pb1Act').innerText = perc1Act > 5 ? perc1Act + '%' : '';
 
         // БЛОК 2: Чистая конверсия (только закрытые лиды)
-        const closedLeads = countSuccessTot + countRefused + countCancelled;
-        const perc2Comp = closedLeads > 0 ? Math.round((countSuccessTot / closedLeads) * 100) : 0;
+        const closedLeads = countCompleted + countRefused + countCancelled;
+        const perc2Comp = closedLeads > 0 ? Math.round((countCompleted / closedLeads) * 100) : 0;
         const perc2Ref = closedLeads > 0 ? Math.round((countRefused / closedLeads) * 100) : 0;
         const perc2Canc = closedLeads > 0 ? (100 - perc2Comp - perc2Ref) : 0;
         document.getElementById('pb2Comp').style.width = perc2Comp + '%'; document.getElementById('pb2Comp').innerText = perc2Comp > 5 ? perc2Comp + '%' : '';
         document.getElementById('pb2Ref').style.width = perc2Ref + '%'; document.getElementById('pb2Ref').innerText = perc2Ref > 5 ? perc2Ref + '%' : '';
         document.getElementById('pb2Canc').style.width = perc2Canc + '%'; document.getElementById('pb2Canc').innerText = perc2Canc > 5 ? perc2Canc + '%' : '';
 
-        // БЛОК 3: Корзины (Только completed)
+        // БЛОК 3: Корзины (Только ремонты)
         const bTot = countCompleted;
         if (bTot === 0) document.getElementById('revenueBucketsCard').classList.add('d-none');
         else {
@@ -1187,14 +1196,13 @@ function calculateStats() {
             setupBucket('u5', pU5); setupBucket('5to8', p5to8); setupBucket('8to10', p8to10); setupBucket('10to20', p10to20); setupBucket('o20', pO20);
         }
 
-        // CPL = Затраты / ВСЕ лиды
+        // РАСЧЕТЫ ПОКАЗАТЕЛЕЙ
         const cpl = totalLeads > 0 ? (adSpend / totalLeads) : 0;
-        // CPA = Затраты / (Ремонты + Диагностики)
-        const cpa = countSuccessTot > 0 ? (adSpend / countSuccessTot) : 0;
-        // Средний чек: ТОЛЬКО ПОЛНОЦЕННЫЕ РЕМОНТЫ (Иначе платные выезды уронят средний чек в 3 раза)
-        let totalCompletedNet = 0;
-        rows.forEach(r => { if(r.status === 'completed') totalCompletedNet += parseFloat(r.net_sum || 0); });
-        const avg = countCompleted > 0 ? (totalCompletedNet / countCompleted) : 0;
+        const cpa = countCompleted > 0 ? (adSpend / countCompleted) : 0;
+        
+        // Два средних чека!
+        const avgCompleted = countCompleted > 0 ? (netCompleted / countCompleted) : 0;
+        const avgTotal = closedLeads > 0 ? (net / closedLeads) : 0;
 
         document.getElementById('statAllLeads').innerText = totalLeads.toLocaleString('ru-RU');
         document.getElementById('statCPL').innerText = Math.round(cpl).toLocaleString('ru-RU') + ' ₽';
@@ -1202,17 +1210,21 @@ function calculateStats() {
         document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
         document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
         document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
-        document.getElementById('statAvg').innerText = Math.round(avg).toLocaleString('ru-RU') + ' ₽';
+        
+        // Выводим чеки
+        document.getElementById('statAvgCompleted').innerText = Math.round(avgCompleted).toLocaleString('ru-RU') + ' ₽';
+        document.getElementById('statAvgTotal').innerText = Math.round(avgTotal).toLocaleString('ru-RU') + ' ₽';
 
-        // Обновление счетчиков вкладок аналитики
+        // Обновление вкладок
         document.getElementById('sc_all').innerText = rows.length; 
         document.getElementById('sc_scheduled').innerText = countScheduled; 
         document.getElementById('sc_completed').innerText = countCompleted; 
-        document.getElementById('sc_diagnostic').innerText = countDiagnostic; 
         document.getElementById('sc_warranty').innerText = countWarranty; 
         document.getElementById('sc_refused').innerText = countRefused; 
         document.getElementById('sc_cancelled').innerText = countCancelled; 
         document.getElementById('sc_active').innerText = countActive;
+        
+        // И еще удалите строчку: document.getElementById('sc_diagnostic').innerText = countDiagnostic;
 
         const chartContainerNode = document.getElementById('crmChartContainer');
         if (!range.showLineChart || Object.keys(chartDataMap).length === 0) chartContainerNode.classList.add('d-none');
