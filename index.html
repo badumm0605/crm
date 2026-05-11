@@ -212,6 +212,14 @@
                     </div>
                 </div>
             </div>
+            <div id="customMonthSelector" class="d-none animate__animated animate__fadeIn">
+                </div>
+
+            <div id="rangeSelectedInfo" class="d-none animate__animated animate__fadeIn mt-2">
+                <button class="btn btn-outline-primary w-100 fw-bold shadow-sm" onclick="openDateRangeModal()">
+                    <i class="fa-solid fa-calendar-days me-2"></i>Выбран: <span id="rangeBtnText">...</span> (Изменить)
+                </button>
+            </div>
         </div>
 
         <div class="row g-3">
@@ -824,15 +832,19 @@ let finalRangeEnd = null;
 function togglePeriodSelector() {
     const period = document.getElementById('statsPeriod').value;
     const customBox = document.getElementById('customMonthSelector');
+    const rangeInfo = document.getElementById('rangeSelectedInfo');
+    
+    // Прячем дополнительные блоки по умолчанию
+    customBox.classList.add('d-none');
+    if (rangeInfo) rangeInfo.classList.add('d-none');
     
     if (period === 'custom') {
         customBox.classList.remove('d-none');
         triggerCalculateStats();
     } else if (period === 'range') {
-        customBox.classList.add('d-none');
+        if (rangeInfo) rangeInfo.classList.remove('d-none');
         openDateRangeModal();
     } else {
-        customBox.classList.add('d-none');
         triggerCalculateStats();
     }
 }
@@ -971,22 +983,29 @@ function clickCalDay(ts) {
     }
     renderCalendar();
 }
-
-function applyDateRange() {
+ 
+ function applyDateRange() {
     if (!rangeStart || !rangeEnd) return;
     
     finalRangeStart = rangeStart;
-    // Обязательно захватываем весь конец дня (23:59:59), чтобы заказы за этот день попали в БД
     finalRangeEnd = rangeEnd + (23 * 60 * 60 * 1000) + (59 * 60 * 1000) + 59000; 
+    
+    // Выводим красивые даты на кнопку
+    const startStr = new Date(finalRangeStart).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
+    const endStr = new Date(finalRangeEnd).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
+    document.getElementById('rangeBtnText').innerText = `${startStr} - ${endStr}`;
     
     rangeModal.hide();
     triggerCalculateStats();
 }
 
 function cancelDateRange() {
-    // Если пользователь передумал и просто закрыл модалку, возвращаем селект на "Текущий месяц"
-    document.getElementById('statsPeriod').value = 'month';
-    togglePeriodSelector();
+    // Если пользователь закрыл календарь и даты еще не были сохранены (например, при первом открытии)
+    if (!finalRangeStart || !finalRangeEnd) {
+        document.getElementById('statsPeriod').value = 'month';
+        togglePeriodSelector();
+    }
+    // Если даты уже были выбраны ранее, мы просто закрываем окно и оставляем всё как есть
 }
 function triggerCalculateStats() {
     document.getElementById('loadingOverlay').classList.remove('d-none');
