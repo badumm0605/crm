@@ -148,7 +148,10 @@
                     <small class="text-muted d-block">Описание работ</small>
                     <span id="detDesc"></span>
                 </div>
-
+<div class="mb-3 pb-3 border-bottom" id="detPhotosBlock" style="display: none;">
+    <small class="text-muted d-block mb-2">Фотографии</small>
+    <div id="detPhotosList" class="d-flex flex-wrap gap-2"></div>
+</div>
                 <div class="row text-center g-2 pt-2">
                     <div class="col-4">
                         <small class="text-muted d-block">Общий</small>
@@ -433,7 +436,15 @@
                         <input type="text" id="orderWarranty" class="form-control" placeholder="Например: 6 мес.">
                     </div>
                 </div>
-
+<div class="mb-3 p-3 bg-light rounded-3 border">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="form-label text-muted fw-bold small mb-0">Прикрепленные фото</label>
+        <button class="btn btn-sm btn-outline-primary rounded-pill" onclick="triggerAndroidPhotoPicker()">
+            <i class="fa-solid fa-camera me-1"></i> Добавить
+        </button>
+    </div>
+    <div id="orderPhotosContainer" class="d-flex flex-wrap gap-2 mt-2"></div>
+</div>
                 <div class="mb-3">
                     <label class="form-label text-muted small mb-1">Описание поломки / работ</label>
                     <textarea id="orderDesc" class="form-control" rows="2" placeholder="Замена подшипников..."></textarea>
@@ -637,11 +648,66 @@ function initDb() {
     try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN master_id INTEGER DEFAULT 0`); } catch(e) {}
     try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN scheduled_timestamp INTEGER`); } catch(e) {}
     try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN warranty_period TEXT DEFAULT ''`); } catch(e) {}
-    
+    try { 
+    window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN photos TEXT DEFAULT '[]'`); 
+} catch(e) {}
     loadMasters();
     updateGlobalCounters();
     loadOrders(true);
 }
+
+
+// Глобальный массив для хранения путей фото текущего редактируемого заказа
+let currentOrderPhotos = [];
+
+// Вызов камеры/галереи через Android
+function triggerAndroidPhotoPicker() {
+    if (window.Android && window.Android.pickPhoto) {
+        // Передаем ID заказа, чтобы Android знал, к чему крепить (или просто вызываем пикер)
+        const orderId = document.getElementById('orderId').value || 'new';
+        window.Android.pickPhoto(orderId);
+    } else {
+        alert("Функция доступна только в приложении");
+    }
+}
+
+// ЭТУ функцию вызовет Android, когда успешно сожмет фото в WebP и сохранит его
+function onPhotoAttachedFromAndroid(filePath) {
+    currentOrderPhotos.push(filePath);
+    renderOrderPhotos();
+    // Вызовем умный бекап, раз мы добавили фото
+    if (typeof smartAutoBackup === 'function') smartAutoBackup('crm');
+}
+
+// Отрисовка миниатюр в модалке редактирования
+function renderOrderPhotos() {
+    const container = document.getElementById('orderPhotosContainer');
+    if (currentOrderPhotos.length === 0) {
+        container.innerHTML = '<span class="text-muted small">Нет прикрепленных фото</span>';
+        return;
+    }
+    
+    let html = '';
+    currentOrderPhotos.forEach((path, index) => {
+        // Используем file:// для отображения локальных файлов в WebView
+        html += `
+        <div class="position-relative" style="width: 70px; height: 70px;">
+            <img src="file://${path}" class="img-thumbnail w-100 h-100 object-fit-cover rounded-3 shadow-sm" onclick="window.Android.openImage('file://${path}')">
+            <button class="btn btn-danger btn-sm position-absolute top-0 end-0 rounded-circle" 
+                    style="width: 24px; height: 24px; padding: 0; transform: translate(30%, -30%);" 
+                    onclick="removePhoto(${index})">
+                <i class="fa-solid fa-xmark" style="font-size: 0.7rem;"></i>
+            </button>
+        </div>`;
+    });
+    container.innerHTML = html;
+}
+
+function removePhoto(index) {
+    currentOrderPhotos.splice(index, 1);
+    renderOrderPhotos();
+}
+
 
 function loadMasters() {
     try { allMasters = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM masters ORDER BY name ASC")); } catch(e) { allMasters = []; }
@@ -854,7 +920,20 @@ function openDetailScreen(orderId) {
     document.getElementById('detParts').innerText = Number(o.parts_sum || 0).toLocaleString('ru-RU') + ' ₽';
     document.getElementById('detNet').innerText = Number(o.net_sum || 0).toLocaleString('ru-RU') + ' ₽';
     document.getElementById('detWarranty').innerText = o.warranty_period ? o.warranty_period : 'Нет';
-    
+    const photosBlock = document.getElementById('detPhotosBlock');
+const photosList = document.getElementById('detPhotosList');
+let photos = [];
+try { photos = o.photos ? JSON.parse(o.photos) : []; } catch(e) {}
+
+if (photos.length > 0) {
+    photosBlock.style.display = 'block';
+    photosList.innerHTML = photos.map(path => 
+        `<img src="file://${path}" class="img-thumbnail object-fit-cover rounded-3 shadow-sm" style="width: 80px; height: 80px; cursor: pointer;" onclick="window.Android.openImage('file://${path}')">`
+    ).join('');
+} else {
+    photosBlock.style.display = 'none';
+    photosList.innerHTML = '';
+}
     let masterName = 'Не выбран';
     if(o.master_id && allMasters.length) {
         const fM = allMasters.find(m => m.id === o.master_id);
@@ -897,7 +976,8 @@ function showOrderModal() {
     document.getElementById('orderWarranty').value = '';
     document.getElementById('orderStatus').value = 'scheduled'; 
     document.getElementById('orderScheduledTime').value = '';
-    
+    currentOrderPhotos = [];
+    renderOrderPhotos();
     const masterSelect = document.getElementById('orderMaster');
     if(masterSelect && allMasters.length > 0) masterSelect.value = allMasters[allMasters.length-1].id;
     
@@ -927,6 +1007,10 @@ function openEditModal() {
         calcNet(); orderModal.show();
         try { history.pushState({ page: 'modal' }, "Modal", "#modal"); } catch(e) {}
     } catch (e) {}
+    try {
+    currentOrderPhotos = o.photos ? JSON.parse(o.photos) : [];
+} catch (e) { currentOrderPhotos = []; }
+renderOrderPhotos();
 }
 
 function calcNet() {
@@ -969,10 +1053,11 @@ function saveOrder() {
 
     const ts = idInput ? (currentViewedOrder ? currentViewedOrder.timestamp : Date.now()) : orderId;
 
-    let sql = idInput 
-        ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, status='${status}', closed_timestamp=${closedTs}, master_id=${masterId}, scheduled_timestamp=${schedTs}, warranty_period='${warranty}' WHERE id=${orderId}`
-        : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp, warranty_period) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs}, '${warranty}')`;
-    
+    const photosJson = JSON.stringify(currentOrderPhotos).replace(/'/g, "''");
+
+let sql = idInput 
+    ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, status='${status}', closed_timestamp=${closedTs}, master_id=${masterId}, scheduled_timestamp=${schedTs}, warranty_period='${warranty}', photos='${photosJson}' WHERE id=${orderId}`
+    : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp, warranty_period, photos) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs}, '${warranty}', '${photosJson}')`;
     window.Android.executeSql(DB_NAME, sql);
     window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
 
