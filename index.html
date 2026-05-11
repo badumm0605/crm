@@ -984,43 +984,11 @@ function triggerCalculateStats() {
 }
 
 function calculateStats() {
-    const period = document.getElementById('statsPeriod').value;
-    const now = new Date();
-    let startTime = 0, endTime = 4102444800000; 
-    let showLineChart = true;
-    let chartType = 'daily'; 
+    // Получаем точные даты и настройки графика из нашего нового хелпера
+    const range = getStatsDateRange();
 
-    if (period === 'today') {
-        startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        showLineChart = false;
-    } else if (period === '24h') {
-        startTime = now.getTime() - (24 * 60 * 60 * 1000);
-        showLineChart = false;
-    } else if (period === 'week') {
-        const day = now.getDay() || 7;
-        startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime();
-        chartType = 'daily';
-    } else if (period === 'month') {
-        startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-        chartType = 'daily';
-    } else if (period === 'lastMonth') {
-        startTime = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
-        endTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-        chartType = 'daily';
-    } else if (period === 'year') {
-        startTime = new Date(now.getFullYear(), 0, 1).getTime();
-        chartType = 'monthly';
-    } else if (period === 'custom') {
-        const selectedMonth = parseInt(document.getElementById('statsMonth').value);
-        const selectedYear = parseInt(document.getElementById('statsYear').value);
-        startTime = new Date(selectedYear, selectedMonth, 1).getTime();
-        endTime = new Date(selectedYear, selectedMonth + 1, 1).getTime();
-        chartType = 'daily';
-    } else if (period === 'all') {
-        chartType = 'monthly';
-    }
-
-    const sql = `SELECT * FROM orders WHERE is_completed=1 AND timestamp >= ${startTime} AND timestamp < ${endTime} ORDER BY timestamp ASC`;
+    // Передаем точные timestamp в SQL запрос
+    const sql = `SELECT * FROM orders WHERE is_completed=1 AND timestamp >= ${range.startTime} AND timestamp < ${range.endTime} ORDER BY timestamp ASC`;
 
     try {
         const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
@@ -1038,9 +1006,9 @@ function calculateStats() {
             parts += parseFloat(r.parts_sum || 0);
             net += parseFloat(r.net_sum || 0);
 
-            // Группировка для графика
+            // Группировка для графика (по дням или по месяцам)
             let d = new Date(r.timestamp);
-            let key = chartType === 'daily' 
+            let key = range.chartType === 'daily' 
                 ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
                 : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
             
@@ -1053,22 +1021,23 @@ function calculateStats() {
 
         const avg = count > 0 ? (net / count) : 0;
 
+        // Выводим цифры в карточки
         document.getElementById('statCount').innerText = count.toLocaleString('ru-RU');
         document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
         document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
         document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
         document.getElementById('statAvg').innerText = Math.round(avg).toLocaleString('ru-RU') + ' ₽';
 
-        // ОТРИСОВКА MORRIS.JS
+        // ОТРИСОВКА ГРАФИКА
         const chartContainerNode = document.getElementById('crmChartContainer');
-        if (!showLineChart || Object.keys(chartDataMap).length === 0) {
+        if (!range.showLineChart || Object.keys(chartDataMap).length === 0) {
             chartContainerNode.classList.add('d-none');
         } else {
             chartContainerNode.classList.remove('d-none');
             
             let chartArray = Object.values(chartDataMap);
 
-            document.getElementById('chartTitle').innerText = chartType === 'daily' ? 'Динамика прибыли по дням' : 'Динамика прибыли по месяцам';
+            document.getElementById('chartTitle').innerText = range.chartType === 'daily' ? 'Динамика прибыли по дням' : 'Динамика прибыли по месяцам';
             document.getElementById('crmChart').innerHTML = ''; 
             
             if (window.Morris) {
@@ -1095,7 +1064,6 @@ function calculateStats() {
         }
     } catch (e) { console.error("Ошибка аналитики:", e); }
 }
-
 
 // === ТЕСТИРОВАНИЕ ПРОИЗВОДИТЕЛЬНОСТИ ===
 function generateTestData() {
