@@ -3,359 +3,508 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Финансы</title>
+    <title>CRM Мастера</title>
     <link href="file:///android_asset/css/bootstrap.min.css" rel="stylesheet">
     <link href="file:///android_asset/fwa/css/all.min.css" rel="stylesheet">
     <link href="file:///android_asset/css/morris.css" rel="stylesheet">
-    
     <style>
         body { background-color: #f0f2f5; padding-bottom: 80px; }
         
-        .accounts-scroll {
-            display: flex; overflow-x: auto; gap: 12px; padding-bottom: 10px;
-            scrollbar-width: none;
-        }
-        .accounts-scroll::-webkit-scrollbar { display: none; }
+        .crm-header { background: linear-gradient(135deg, #1e1e2f 0%, #2a2a4a 100%); color: white; border-radius: 20px; }
         
-        .account-card {
-            min-width: 140px; border-radius: 16px; color: white; padding: 16px;
-            position: relative; overflow: hidden; border: none; cursor: pointer; transition: 0.2s;
-        }
-        .account-card:active { transform: scale(0.95); }
+        .order-card { border-radius: 16px; border: none; border-left: 5px solid #ffc107; transition: 0.2s; cursor: pointer; }
+        .order-card.scheduled { border-left-color: #0d6efd; opacity: 1; }
+        .order-card.completed { border-left-color: #198754; opacity: 0.9; }
+        .order-card.warranty { border-left-color: #6f42c1; opacity: 0.9; }
+        .order-card.refused { border-left-color: #dc3545; opacity: 0.8; }
+        .order-card.cancelled { border-left-color: #6c757d; opacity: 0.7; }
         
-        .acc-cash { background: linear-gradient(135deg, #198754 0%, #146c43 100%); }
-        .acc-card { background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); }
-        .acc-credit { background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%); }
-        .acc-add { background: #e9ecef; color: #6c757d; border: 2px dashed #ced4da; min-width: 60px; display: flex; align-items: center; justify-content: center; font-size: 24px;}
+        .financial-row { background-color: #f8f9fa; border-radius: 8px; padding: 8px; }
         
-        .transaction-card { border-radius: 16px; border: none; cursor: pointer; transition: 0.2s; }
-        .icon-box { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 20px; flex-shrink: 0; }
-        .icon-income { background-color: #d1e7dd; color: #198754; }
-        .icon-expense { background-color: #f8d7da; color: #dc3545; }
-        .icon-transfer { background-color: #e2e3e5; color: #6c757d; }
-        
-        .fab {
-            position: fixed; bottom: 24px; right: 24px; width: 60px; height: 60px;
-            border-radius: 30px; font-size: 24px; box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
-            z-index: 1040; display: flex; align-items: center; justify-content: center;
-            transition: 0.3s ease-in-out;
-        }
+        .fab { position: fixed; bottom: 24px; right: 24px; width: 60px; height: 60px; border-radius: 30px; font-size: 24px; box-shadow: 0 4px 12px rgba(30, 30, 47, 0.4); z-index: 1040; display: flex; align-items: center; justify-content: center; background-color: #2a2a4a; color: white; border: none; transition: 0.3s ease-in-out; }
         .fab-hidden { opacity: 0; visibility: hidden; transform: scale(0.8); pointer-events: none; }
-        
-        .scroll-top-btn {
-            position: fixed; bottom: 24px; right: 24px; width: 60px; height: 60px;
-            border-radius: 30px; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1030; display: flex; align-items: center; justify-content: center;
-            opacity: 0; visibility: hidden; transition: 0.3s ease-in-out; 
-            background-color: white; color: #6c757d; border: none;
-        }
+
+        .scroll-top-btn { position: fixed; bottom: 24px; right: 24px; width: 60px; height: 60px; border-radius: 30px; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1030; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: 0.3s ease-in-out; background-color: white; color: #6c757d; border: none; }
         .scroll-top-btn.visible { opacity: 1; visibility: visible; }
 
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(240, 242, 245, 0.85); backdrop-filter: blur(2px);
-            z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
+        .horizontal-tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 0.5rem; padding-bottom: 5px; }
+        .horizontal-tabs::-webkit-scrollbar { display: none; }
+        .horizontal-tabs .nav-link { white-space: nowrap; border-radius: 12px !important; background-color: #fff; color: #6c757d; border: 1px solid #dee2e6; padding: 0.4rem 0.8rem; font-weight: 600; }
+        .horizontal-tabs .nav-link.active { background-color: #2a2a4a; color: #fff !important; border-color: #2a2a4a; }
+        .horizontal-tabs .badge { font-size: 0.75rem; background-color: #e9ecef !important; color: #495057 !important; margin-left: 6px; }
+        .horizontal-tabs .nav-link.active .badge { background-color: rgba(255,255,255,0.2) !important; color: #fff !important; }
 
-        /* КАЛЕНДАРЬ */
+        .morris-hover { position: absolute; z-index: 1000 !important; }
+        .chart-container-card { overflow: visible !important; } 
+        .morris-default-style { font-family: inherit; }
+
+        .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(240, 242, 245, 0.85); backdrop-filter: blur(2px); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
         .cal-day { width: 14.28%; padding: 10px 0; cursor: pointer; border-radius: 8px; margin-bottom: 2px; transition: 0.2s; font-weight: bold; }
         .cal-day:hover:not(.disabled) { background-color: #e9ecef; }
         .cal-day.selected { background-color: #0d6efd; color: white; border-radius: 8px; }
         .cal-day.in-range { background-color: #cfe2ff; border-radius: 0; color: #0a58ca; }
         .cal-day.disabled { opacity: 0.3; pointer-events: none; font-weight: normal; }
 
-        .morris-hover { position: absolute; z-index: 1000 !important; }
-        .chart-container-card { overflow: visible !important; } 
-        .morris-default-style { font-family: inherit; }
+        .clickable-card { cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
+        .clickable-card:hover, .clickable-card:active { border-color: #0d6efd; transform: scale(0.98); }
     </style>
 </head>
 <body>
 
 <div id="mainScreen">
     <div class="container py-3">
-        <div class="d-flex justify-content-between align-items-center mb-3 px-1">
-    <h5 class="fw-bold mb-0">Мои счета</h5>
-    <div>
-        <button class="btn btn-light rounded-circle shadow-sm text-primary me-2" style="width: 40px; height: 40px;" onclick="openStatsScreen()">
-            <i class="fa-solid fa-chart-pie"></i>
-        </button>
-       
-    </div>
+        <div class="crm-header p-4 mb-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="mb-0 fw-bold"><i class="fa-solid fa-toolbox me-2"></i>Рабочие заказы</h5>
+                <div>
+    <button class="btn btn-link text-white p-0 m-0 me-3" onclick="openMastersModal()">
+        <i class="fa-solid fa-hard-hat fs-4"></i>
+    </button>
+    <button class="btn btn-link text-white p-0 m-0 me-3" onclick="openStatsScreen()">
+        <i class="fa-solid fa-chart-pie fs-4"></i>
+    </button>
+   
 </div>
-
-        <div class="px-1 mb-2">
-            <span class="text-muted small">Свободные средства: </span>
-            <span class="fw-bold fs-5 text-primary" id="totalBalanceAll">0 ₽</span>
+            </div>
+            <p class="mb-1 mt-3 opacity-75 small">Чистая прибыль (все время)</p>
+            <h2 class="fw-bold mb-0 text-success" id="totalNetProfit">0 ₽</h2>
         </div>
 
-        <div class="accounts-scroll px-1" id="accountsList"></div>
+        <div class="mb-3 px-1 position-relative">
+            <input type="text" id="searchInput" class="form-control form-control-lg shadow-sm border-0 rounded-pill ps-4 fw-bold" placeholder="Поиск..." autocomplete="off" oninput="handleSearch(this.value)">
+            <i class="fa-solid fa-search position-absolute text-muted" style="top: 50%; right: 25px; transform: translateY(-50%);"></i>
+        </div>
 
-        <div class="alert alert-warning mt-3 mb-4 shadow-sm border-0">
+        <ul class="nav horizontal-tabs mb-3 px-1" id="mainTabs">
+            <li class="nav-item"><a class="nav-link active shadow-sm" href="#" id="tab_scheduled" onclick="setMainFilter('scheduled'); return false;">Ожидают <span class="badge text-primary" id="mc_scheduled">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_active" onclick="setMainFilter('active'); return false;">В работе <span class="badge" id="mc_active">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_completed" onclick="setMainFilter('completed'); return false;">Ремонт <span class="badge" id="mc_completed">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_warranty" onclick="setMainFilter('warranty'); return false;">Гарантия <span class="badge" id="mc_warranty">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_refused" onclick="setMainFilter('refused'); return false;">Отказы <span class="badge" id="mc_refused">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_cancelled" onclick="setMainFilter('cancelled'); return false;">Отмены <span class="badge" id="mc_cancelled">0</span></a></li>
+        </ul>
+
+        <div class="alert alert-warning mt-2 shadow-sm border-0">
             <h6 class="fw-bold"><i class="fa-solid fa-bug me-2"></i>Панель разработчика</h6>
-            <button class="btn btn-dark btn-sm w-100 mb-2 fw-bold" onclick="generateTestTx()" id="btnGenerate">Сгенерировать 10 000 записей</button>
-            <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="clearFinanceDb()">Очистить базу (только Финансы)</button>
+            <button class="btn btn-dark btn-sm w-100 mb-2 fw-bold" onclick="generateTestData()" id="btnGenerate">Сгенерировать 10 000 заказов</button>
+            <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="clearDatabase()">Очистить тестовую базу</button>
         </div>
 
-        <h6 class="text-muted fw-bold mb-3 px-1">История операций</h6>
-        <div id="transactionsList" class="d-flex flex-column gap-2 mb-5"></div>
+        <div id="ordersList" class="d-flex flex-column gap-3 mt-3 mb-5"></div>
     </div>
 
-    <button class="btn btn-primary fab" onclick="showAddModal()">
+    <button class="btn btn-primary fab" onclick="showOrderModal()">
         <i class="fa-solid fa-plus"></i>
     </button>
+</div>
+
+<div id="detailScreen" class="d-none">
+    <div class="container py-3">
+        <div class="d-flex align-items-center mb-4 pt-1">
+            <button class="btn btn-light rounded-circle me-3 shadow-sm" onclick="closeDetailScreen()" style="width: 40px; height: 40px;">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <h5 class="mb-0 fw-bold text-truncate" id="detAddress">Адрес</h5>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                    <div>
+                        <small class="text-muted d-block">Статус</small>
+                        <span id="detStatus"></span>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted d-block">Даты</small>
+                        <strong id="detDate" class="d-block" style="font-size: 0.85rem;"></strong>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-7">
+                        <small class="text-muted d-block">Клиент</small>
+                        <strong id="detClient" class="fs-5"></strong>
+                    </div>
+                    <div class="col-5 text-end">
+                        <small class="text-muted d-block">Мастер</small>
+                        <span id="detMaster" class="badge bg-light text-dark border"><i class="fa-solid fa-hard-hat me-1"></i>...</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <small class="text-muted d-block">Телефон</small>
+                    <a href="#" id="detPhoneBtn" class="btn btn-outline-primary btn-sm mt-1 rounded-pill fw-bold">
+                        <i class="fa-solid fa-phone me-2"></i><span id="detPhone"></span>
+                    </a>
+                </div>
+
+                <div class="mb-3">
+                    <small class="text-muted d-block">Срок гарантии</small>
+                    <span id="detWarranty" class="fw-bold"></span>
+                </div>
+
+                <div class="mb-3 pb-3 border-bottom">
+                    <small class="text-muted d-block">Описание работ</small>
+                    <span id="detDesc"></span>
+                </div>
+
+                <div class="row text-center g-2 pt-2">
+                    <div class="col-4">
+                        <small class="text-muted d-block">Общий</small>
+                        <strong id="detTotal" class="text-dark">0 ₽</strong>
+                    </div>
+                    <div class="col-4 border-start border-end">
+                        <small class="text-muted d-block">Расход</small>
+                        <strong id="detParts" class="text-danger">0 ₽</strong>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block">Чистая</small>
+                        <strong id="detNet" class="text-success">0 ₽</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary w-100 py-3 rounded-3 fw-bold mb-2 shadow-sm" onclick="openEditModal()">
+            <i class="fa-solid fa-pen me-2"></i>Редактировать заказ
+        </button>
+        <button class="btn btn-outline-danger w-100 py-3 rounded-3" onclick="deleteOrder()">
+            <i class="fa-solid fa-trash-can me-2"></i>Удалить заказ
+        </button>
+    </div>
 </div>
 
 <div id="statsScreen" class="d-none">
     <div class="container py-3">
         <div class="d-flex align-items-center mb-4 pt-1">
-            <button class="btn btn-light rounded-circle me-3 shadow-sm" onclick="closeStatsScreen()" style="width: 40px; height: 40px;"><i class="fa-solid fa-arrow-left"></i></button>
+            <button class="btn btn-light rounded-circle me-3 shadow-sm" onclick="closeStatsScreen()" style="width: 40px; height: 40px;">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
             <h5 class="mb-0 fw-bold">Аналитика</h5>
         </div>
-        <div class="mb-4">
-            <select id="statsPeriod" class="form-select border-0 shadow-sm fw-bold text-primary mb-2" onchange="togglePeriodSelector()">
-                <option value="today">Сегодня</option><option value="24h">За последние 24 часа</option>
-                <option value="week">Текущая неделя</option><option value="month" selected>Этот месяц</option>
-                <option value="lastMonth">Прошлый месяц</option><option value="custom">Выбрать месяц...</option>
-                <option value="year">Этот год</option><option value="range">Свой период (с... по...)</option><option value="all">За всё время</option>
-            </select>
-            <div id="customMonthSelector" class="d-none animate__animated animate__fadeIn">
-                <div class="row g-2">
-                    <div class="col-7"><select id="statsMonth" class="form-select border-0 shadow-sm fw-bold" onchange="triggerCalculateStats()"><option value="0">Январь</option><option value="1">Февраль</option><option value="2">Март</option><option value="3">Апрель</option><option value="4">Май</option><option value="5">Июнь</option><option value="6">Июль</option><option value="7">Август</option><option value="8">Сентябрь</option><option value="9">Октябрь</option><option value="10">Ноябрь</option><option value="11">Декабрь</option></select></div>
-                    <div class="col-5"><select id="statsYear" class="form-select border-0 shadow-sm fw-bold" onchange="triggerCalculateStats()"></select></div>
+
+        <div class="row g-2 mb-3">
+            <div class="col-7">
+                <select id="statsPeriod" class="form-select border-0 shadow-sm fw-bold text-primary" onchange="togglePeriodSelector()">
+                    <option value="today">Сегодня</option>
+                    <option value="24h">За последние 24 ч.</option>
+                    <option value="week">Текущая неделя</option>
+                    <option value="month" selected>Этот месяц</option>
+                    <option value="lastMonth">Прошлый месяц</option>
+                    <option value="year">Этот год</option>
+                    <option value="custom">Выбрать месяц...</option>
+                    <option value="range">Свой период (с... по...)</option> 
+                    <option value="all">За всё время</option>
+                </select>
+            </div>
+            <div class="col-5">
+                <select id="statsMaster" class="form-select border-0 shadow-sm fw-bold text-dark" onchange="triggerCalculateStats()">
+                    <option value="all">Все мастера</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="customMonthSelector" class="d-none animate__animated animate__fadeIn mb-3">
+            <div class="row g-2">
+                <div class="col-7">
+                    <select id="statsMonth" class="form-select border-0 shadow-sm fw-bold" onchange="triggerCalculateStats()">
+                        <option value="0">Январь</option><option value="1">Февраль</option><option value="2">Март</option>
+                        <option value="3">Апрель</option><option value="4">Май</option><option value="5">Июнь</option>
+                        <option value="6">Июль</option><option value="7">Август</option><option value="8">Сентябрь</option>
+                        <option value="9">Октябрь</option><option value="10">Ноябрь</option><option value="11">Декабрь</option>
+                    </select>
+                </div>
+                <div class="col-5">
+                    <select id="statsYear" class="form-select border-0 shadow-sm fw-bold" onchange="triggerCalculateStats()"></select>
                 </div>
             </div>
-            <div id="rangeSelectedInfo" class="d-none animate__animated animate__fadeIn mt-2">
-                <button class="btn btn-outline-primary w-100 fw-bold shadow-sm" onclick="openDateRangeModal()">
-                    <i class="fa-solid fa-calendar-days me-2"></i>Выбран: <span id="rangeBtnText">...</span> (Изменить)
-                </button>
+        </div>
+
+        <div id="rangeSelectedInfo" class="d-none animate__animated animate__fadeIn mt-2 mb-3">
+            <button class="btn btn-outline-primary w-100 fw-bold shadow-sm" onclick="openDateRangeModal()">
+                <i class="fa-solid fa-calendar-days me-2"></i>Выбран: <span id="rangeBtnText">...</span> (Изменить)
+            </button>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm bg-success text-white" style="background: linear-gradient(135deg, #198754 0%, #146c43 100%);">
+                    <div class="card-body p-4">
+                        <small class="opacity-75 d-block mb-1">Чистая прибыль</small>
+                        <h2 class="fw-bold mb-0" id="statNet">0 ₽</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card border-0 shadow-sm bg-white">
+                    <div class="card-body p-3">
+                        <small class="text-muted d-block mb-1">Выручка (Общ)</small>
+                        <h5 class="fw-bold mb-0 text-dark" id="statTotal">0 ₽</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card border-0 shadow-sm bg-white">
+                    <div class="card-body p-3">
+                        <small class="text-muted d-block mb-1">Запчасти (Расх)</small>
+                        <h5 class="fw-bold mb-0 text-danger" id="statParts">0 ₽</h5>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="row g-2 mb-4">
-            <div class="col-6"><div class="card border-0 shadow-sm bg-success text-white"><div class="card-body p-3 text-center"><small class="opacity-75 d-block mb-1">Доходы</small><h5 class="fw-bold mb-0" id="statIncome">0 ₽</h5></div></div></div>
-            <div class="col-6"><div class="card border-0 shadow-sm bg-danger text-white"><div class="card-body p-3 text-center"><small class="opacity-75 d-block mb-1">Расходы</small><h5 class="fw-bold mb-0" id="statExpense">0 ₽</h5></div></div></div>
-            <div class="col-12 mt-2"><div class="card border-0 shadow-sm bg-white"><div class="card-body p-3 d-flex justify-content-between align-items-center"><span class="text-muted fw-bold">Итог (Дельта):</span><span class="fs-4 fw-bold text-dark" id="statDelta">0 ₽</span></div></div></div>
+
+        <div class="row g-2 mt-2">
+            <div class="col-4">
+                <div class="card border-0 shadow-sm bg-white">
+                    <div class="card-body p-2 text-center">
+                        <small class="text-muted d-block mb-1" style="font-size: 0.65rem;">Всего заявок</small>
+                        <h6 class="fw-bold mb-0 text-dark" id="statAllLeads">0</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card border-0 shadow-sm bg-white clickable-card" onclick="openCplModal()">
+                    <div class="card-body p-2 text-center">
+                        <small class="text-muted d-block mb-1" style="font-size: 0.65rem;">CPL <i class="fa-solid fa-circle-info ms-1 text-primary"></i></small>
+                        <h6 class="fw-bold mb-0 text-primary" id="statCPL">0 ₽</h6>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card border-0 shadow-sm bg-white">
+                    <div class="card-body p-2 text-center">
+                        <small class="text-muted d-block mb-1" style="font-size: 0.65rem;">CPA (Ремонт)</small>
+                        <h6 class="fw-bold mb-0 text-success" id="statCPA">0 ₽</h6>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div id="financeChartContainer" class="card border-0 shadow-sm mb-4 chart-container-card d-none">
-            <div class="card-body p-2 pt-3"><h6 class="text-muted fw-bold mb-3 px-2 text-center" id="chartTitle">Динамика</h6><div id="financeChart" style="height: 250px;"></div></div>
+
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body p-3">
+                <h6 class="text-muted fw-bold mb-2">Общая конверсия</h6>
+                <div class="progress" style="height: 25px; border-radius: 12px;">
+                    <div id="pb1Comp" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
+                    <div id="pb1Fail" class="progress-bar bg-danger fw-bold" style="width: 0%">0%</div>
+                    <div id="pb1Act" class="progress-bar bg-warning text-dark fw-bold" style="width: 0%">0%</div>
+                </div>
+                <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem; font-weight: 700;">
+                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Успех</span>
+                    <span class="text-danger"><i class="fa-solid fa-circle me-1"></i>Отклонено</span>
+                    <span class="text-warning"><i class="fa-solid fa-circle me-1"></i>В работе/Ожидают</span>
+                </div>
+            </div>
         </div>
-        <div id="incomeStatsContainer" class="d-none mb-4">
-            <h6 class="text-muted fw-bold mb-3 px-1"><i class="fa-solid fa-arrow-down text-success me-2"></i>Доходы</h6>
-            <div class="card border-0 shadow-sm chart-container-card mb-3"><div class="card-body p-2"><div id="incomeDonutChart" style="height: 220px;"></div></div></div>
-            <div id="categoryStatsIncomeList" class="d-flex flex-column gap-2"></div>
+
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body p-3">
+                <h6 class="text-muted fw-bold mb-2">Чистая конверсия (только закрытые)</h6>
+                <div class="progress" style="height: 25px; border-radius: 12px;">
+                    <div id="pb2Comp" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
+                    <div id="pb2Ref" class="progress-bar" style="width: 0%; background-color: #dc3545; font-weight: bold;">0%</div>
+                    <div id="pb2Canc" class="progress-bar" style="width: 0%; background-color: #6c757d; font-weight: bold;">0%</div>
+                </div>
+                <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem; font-weight: 700;">
+                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Выполнены</span>
+                    <span style="color: #dc3545;"><i class="fa-solid fa-circle me-1"></i>Отказ</span>
+                    <span style="color: #6c757d;"><i class="fa-solid fa-circle me-1"></i>Отмена</span>
+                </div>
+            </div>
         </div>
-        <div id="expenseStatsContainer" class="d-none mb-4">
-            <h6 class="text-muted fw-bold mb-3 px-1"><i class="fa-solid fa-arrow-up text-danger me-2"></i>Расходы</h6>
-            <div class="card border-0 shadow-sm chart-container-card mb-3"><div class="card-body p-2"><div id="expenseDonutChart" style="height: 220px;"></div></div></div>
-            <div id="categoryStatsExpenseList" class="d-flex flex-column gap-2"></div>
+
+        <div class="card border-0 shadow-sm mt-3" id="revenueBucketsCard">
+            <div class="card-body p-3">
+                <h6 class="text-muted fw-bold mb-2">Структура чеков (Только Ремонты)</h6>
+                <div class="progress" style="height: 25px; border-radius: 12px;">
+                    <div id="pb3_u5" class="progress-bar bg-danger fw-bold" style="width: 0%">0%</div>
+                    <div id="pb3_5to8" class="progress-bar bg-secondary fw-bold" style="width: 0%">0%</div>
+                    <div id="pb3_8to10" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
+                    <div id="pb3_10to20" class="progress-bar bg-info fw-bold" style="width: 0%">0%</div>
+                    <div id="pb3_o20" class="progress-bar bg-warning text-dark fw-bold" style="width: 0%">0%</div>
+                </div>
+                <div class="d-flex flex-wrap justify-content-between mt-2 gap-1" style="font-size: 0.65rem; font-weight: 700;">
+                    <span class="text-danger d-none" id="lg_u5"><i class="fa-solid fa-circle me-1"></i>< 5k</span>
+                    <span class="text-secondary d-none" id="lg_5to8"><i class="fa-solid fa-circle me-1"></i>5k - 8k</span>
+                    <span class="text-success d-none" id="lg_8to10"><i class="fa-solid fa-circle me-1"></i>8k - 10k</span>
+                    <span class="text-info d-none" id="lg_10to20"><i class="fa-solid fa-circle me-1"></i>10k - 20k</span>
+                    <span class="text-warning d-none" id="lg_o20"><i class="fa-solid fa-circle me-1"></i>> 20k</span>
+                </div>
+            </div>
         </div>
-        <h6 class="text-muted fw-bold mb-3 px-1 mt-5 border-top pt-4">Операции за выбранный период</h6>
-        <div id="statsTransactionsList" class="d-flex flex-column gap-2 mb-5"></div>
+
+        <div id="crmChartContainer" class="card border-0 shadow-sm mb-4 mt-4 chart-container-card d-none">
+            <div class="card-body p-2 pt-3">
+                <h6 class="text-muted fw-bold mb-3 px-2 text-center" id="chartTitle">Динамика прибыли</h6>
+                <div id="crmChart" style="height: 250px;"></div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-4 mb-4" style="background-color: #fff9e6;">
+            <div class="card-body p-3">
+                <h6 class="text-warning text-dark fw-bold mb-3"><i class="fa-solid fa-hourglass-half me-2"></i>Зависшие (Ожидают + В работе)</h6>
+                <div class="row g-2 text-center small fw-bold">
+                    <div class="col-4"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">Всего</span><span class="fs-5 text-dark" id="agTotal">0</span></div></div>
+                    <div class="col-4"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">За день</span><span class="fs-5 text-dark" id="agToday">0</span></div></div>
+                    <div class="col-4"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">Неделя</span><span class="fs-5 text-dark" id="agWeek">0</span></div></div>
+                    <div class="col-6"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">Месяц</span><span class="fs-5 text-dark" id="agMonth">0</span></div></div>
+                    <div class="col-6"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">За период</span><span class="fs-5 text-primary" id="agPeriod">0</span></div></div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="col-12 mb-4">
+            <h6 class="text-muted fw-bold mb-3 px-1">Показатели эффективности</h6>
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                        <div>
+                            <span class="text-muted fw-bold d-block">Средний чек (Без отмен):</span>
+                            <small class="text-muted" style="font-size:0.65rem">Только выполненные ремонты</small>
+                        </div>
+                        <span class="fs-5 fw-bold text-success" id="statAvgCompleted">0 ₽</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted fw-bold d-block">Средний чек (С отменами):</span>
+                            <small class="text-muted" style="font-size:0.65rem">Ремонты + Платные/бесплатные отказы</small>
+                        </div>
+                        <span class="fs-5 fw-bold text-primary" id="statAvgTotal">0 ₽</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="text-muted fw-bold mb-3 px-1 mt-4 border-top pt-4">Заказы за выбранный период</h6>
+        <ul class="nav horizontal-tabs mb-3 px-1" id="statsTabs">
+            <li class="nav-item"><a class="nav-link active shadow-sm" href="#" id="st_all" onclick="setStatsFilter('all'); return false;">Все <span class="badge" id="sc_all">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_scheduled" onclick="setStatsFilter('scheduled'); return false;">Ожидают <span class="badge text-primary" id="sc_scheduled">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_active" onclick="setStatsFilter('active'); return false;">В работе <span class="badge" id="sc_active">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_completed" onclick="setStatsFilter('completed'); return false;">Ремонт <span class="badge" id="sc_completed">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_warranty" onclick="setStatsFilter('warranty'); return false;">Гарантия <span class="badge" id="sc_warranty">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_refused" onclick="setStatsFilter('refused'); return false;">Отказ <span class="badge" id="sc_refused">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_cancelled" onclick="setStatsFilter('cancelled'); return false;">Отмена <span class="badge" id="sc_cancelled">0</span></a></li>
+        </ul>
+
+        <div id="statsOrdersList" class="d-flex flex-column gap-3 mb-5"></div>
     </div>
 </div>
 
-<div class="modal fade" id="addModal" tabindex="-1">
+<div class="modal fade" id="orderModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered align-items-end mb-0" style="min-height: 100vh;">
         <div class="modal-content border-0 rounded-top-4" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" id="txModalTitle">Новая операция</h5>
+                <h5 class="modal-title fw-bold" id="modalTitle">Заказ</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="txId">
-                <div class="btn-group w-100 mb-3" role="group">
-                    <input type="radio" class="btn-check" name="txType" id="typeExpense" value="expense" checked onchange="updateCategorySelect()">
-                    <label class="btn btn-outline-danger" for="typeExpense">Расход</label>
-                    <input type="radio" class="btn-check" name="txType" id="typeIncome" value="income" onchange="updateCategorySelect()">
-                    <label class="btn btn-outline-success" for="typeIncome">Доход</label>
+                <input type="hidden" id="orderId">
+                
+                <div class="mb-3 position-relative">
+                    <label class="form-label text-muted small mb-1">Адрес</label>
+                    <input type="text" id="orderAddress" class="form-control fw-bold" placeholder="ул. Ленина 1, кв 2" autocomplete="off" oninput="handleAddressSearch(this.value)">
+                    <ul id="addressSuggestions" class="dropdown-menu w-100 shadow-lg border-0" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 250px; overflow-y: auto;"></ul>
                 </div>
-                <div class="mb-3"><label class="form-label text-muted small mb-1">Сумма (₽)</label><input type="number" id="txAmount" class="form-control form-control-lg fw-bold" placeholder="0" inputmode="decimal"></div>
-                <div class="mb-3"><label class="form-label text-muted small mb-1">Счет списания / пополнения</label><select id="txAccount" class="form-select form-select-lg fw-bold text-primary"></select></div>
-                <div class="d-flex gap-2 mb-3 align-items-end">
-                    <div class="flex-grow-1"><label class="form-label text-muted small mb-1">Категория</label><select id="txCategory" class="form-select form-select-lg"></select></div>
-                    <button class="btn btn-outline-primary shadow-sm" style="height: calc(1.5em + 1rem + 2px);" onclick="showCategoryModal()"><i class="fa-solid fa-folder-plus"></i></button>
+                
+                <div class="row g-2 mb-3 position-relative">
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Имя клиента</label>
+                        <input type="text" id="orderClient" class="form-control" placeholder="Иван" autocomplete="off" oninput="handleContactSearch(this.value)">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Телефон</label>
+                        <input type="tel" id="orderPhone" class="form-control" placeholder="8999..." autocomplete="off" oninput="handleContactSearch(this.value)">
+                    </div>
+                    <ul id="contactSuggestions" class="dropdown-menu w-100 shadow-lg border-0" style="display: none; position: absolute; top: 100%; left: 0; z-index: 1060; max-height: 200px; overflow-y: auto;"></ul>
                 </div>
-                <div class="mb-4"><label class="form-label text-muted small mb-1">Заметка</label><input type="text" id="txNote" class="form-control" placeholder="Комментарий..."></div>
+
                 <div class="mb-3">
-                    <label class="form-label text-muted small mb-1">Дата и время операции</label>
-                    <input type="datetime-local" id="txDate" class="form-control fw-bold text-primary">
+                    <label class="form-label text-muted small mb-1">Дата и время визита</label>
+                    <input type="datetime-local" id="orderScheduledTime" class="form-control fw-bold text-primary">
                 </div>
-                <button class="btn btn-primary w-100 py-3 rounded-3 fw-bold mb-2" onclick="saveTransaction()">Сохранить</button>
-                <button class="btn btn-outline-danger w-100 py-2 rounded-3 d-none" id="btnDeleteTx" onclick="deleteTx()">Удалить операцию</button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="modal fade" id="addAccountModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold">Добавить счет</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <div class="mb-3"><label class="form-label text-muted small mb-1">Название (Авито, Сбер...)</label><input type="text" id="newAccName" class="form-control" placeholder="Моя карта"></div>
                 <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <label class="form-label text-muted small mb-1">Цвет</label>
-                        <select id="newAccColor" class="form-select fw-bold">
-                            <option value="linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)">🔵 Синий (ВТБ, Авито)</option>
-<option value="linear-gradient(135deg, #052c65 0%, #031633 100%)">🌌 Темно-синий (Газпром, Совком)</option>
-<option value="linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%)">🌐 Голубой (Ozon, VK Pay)</option>
-
-<option value="linear-gradient(135deg, #198754 0%, #146c43 100%)">🟢 Зеленый (Сбер)</option>
-<option value="linear-gradient(135deg, #20c997 0%, #1aa179 100%)">🍏 Мятный (Россельхоз)</option>
-
-<option value="linear-gradient(135deg, #ffc107 0%, #d39e00 100%)">🟡 Желтый (Т-Банк, Яндекс)</option>
-<option value="linear-gradient(135deg, #fd7e14 0%, #c86210 100%)">🟠 Оранжевый (Райффайзен)</option>
-
-<option value="linear-gradient(135deg, #dc3545 0%, #b02a37 100%)">🔴 Красный (Альфа, МТС)</option>
-<option value="linear-gradient(135deg, #d63384 0%, #ab296a 100%)">💖 Розовый (Wildberries)</option>
-
-<option value="linear-gradient(135deg, #6f42c1 0%, #59359a 100%)">🟣 Фиолетовый (ЮMoney)</option>
-<option value="linear-gradient(135deg, #4b0082 0%, #3c0068 100%)">🔮 Индиго (Точка Банк)</option>
-
-<option value="linear-gradient(135deg, #d4af37 0%, #aa8c2c 100%)">👑 Золотой (Premium)</option>
-<option value="linear-gradient(135deg, #adb5bd 0%, #6c757d 100%)">⚙️ Стальной (Базовый)</option>
-<option value="linear-gradient(135deg, #212529 0%, #1a1e21 100%)">⚫ Черный (Black Edition)</option>
-                        </select>
+                        <label class="form-label text-muted small mb-1">Мастер</label>
+                        <select id="orderMaster" class="form-select"></select>
                     </div>
                     <div class="col-6">
-                        <label class="form-label text-muted small mb-1">Иконка</label>
-                        <select id="newAccIcon" class="form-select fw-bold">
-                            <option value="fa-wallet">💳 Кошелек</option>
-                            <option value="fa-credit-card">💳 Карта</option>
-                            <option value="fa-building-columns">🏦 Банк</option>
-                            <option value="fa-bullseye">🎯 Цель (Реклама)</option>
-                            <option value="fa-mobile-screen">📱 Телефон</option>
-                            <option value="fa-briefcase">💼 Бизнес</option>
-                            <option value="fa-piggy-bank">🐷 Копилка</option>
-                        </select>
+                        <label class="form-label text-muted small mb-1">Срок гарантии</label>
+                        <input type="text" id="orderWarranty" class="form-control" placeholder="Например: 6 мес.">
                     </div>
                 </div>
-                
-                <div class="form-check form-switch mb-4 p-3 bg-light rounded border">
-                    <input class="form-check-input ms-0 me-2" type="checkbox" id="newAccIsTarget">
-                    <label class="form-check-label fw-bold" for="newAccIsTarget">Это целевой счет (Реклама)</label>
-                    <div class="text-muted" style="font-size: 0.7rem; margin-top: 4px; margin-left: 36px;">Средства на этом счету будут скрыты из "Свободных средств". Используйте для рекламных кабинетов.</div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small mb-1">Описание поломки / работ</label>
+                    <textarea id="orderDesc" class="form-control" rows="2" placeholder="Замена подшипников..."></textarea>
                 </div>
 
-                <button class="btn btn-primary w-100 fw-bold py-2 rounded-3" onclick="saveNewAccount()">Создать счет</button>
+                <div class="row g-2 mb-4 p-3 bg-light rounded-3 border">
+                    <h6 class="w-100 fw-bold text-center mb-3">Финансы</h6>
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Общий чек (₽)</label>
+                        <input type="number" id="orderTotal" class="form-control fw-bold text-success" placeholder="0" oninput="calcNet()">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Расход / Запчасти (₽)</label>
+                        <input type="number" id="orderParts" class="form-control fw-bold text-danger" placeholder="0" oninput="calcNet()">
+                    </div>
+                    <div class="col-12 mt-2 text-center">
+                        <span class="text-muted small">Чистая прибыль: </span>
+                        <span id="orderNet" class="fw-bold fs-5">0 ₽</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small mb-1">Статус заказа</label>
+                    <select id="orderStatus" class="form-select form-select-lg fw-bold">
+                        <option value="scheduled">📅 Ожидает (Новая заявка)</option>
+                        <option value="active">⏳ В работе (У мастера)</option>
+                        <option value="completed">✅ Выполнен успешно (Ремонт)</option>
+                        <option value="warranty">🛡️ Гарантийный выезд</option>
+                        <option value="refused">❌ Отказ (не устроила цена и т.д.)</option>
+                        <option value="cancelled">🚫 Отмена (до приезда)</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary w-100 py-3 rounded-3 fw-bold mb-2" onclick="saveOrder()">Сохранить изменения</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="editAccountModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered align-items-end mb-0" style="min-height: 100vh;">
-        <div class="modal-content border-0 rounded-top-4" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
-            <div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">Настройки счета</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <div class="text-center mb-4">
-                    <small class="text-muted d-block mb-1">Текущий баланс</small>
-                    <h2 class="fw-bold text-primary mb-0" id="editAccBalance">0 ₽</h2>
-                </div>
-
-                <div class="row g-2 mb-4">
-                    <div class="col-6">
-                        <button class="btn btn-light border shadow-sm w-100 py-3 fw-bold text-dark" onclick="openTransferModal()">
-                            <i class="fa-solid fa-arrow-right-arrow-left d-block fs-4 text-primary mb-1"></i>Перевод
-                        </button>
-                    </div>
-                    <div class="col-6">
-                        <button class="btn btn-light border shadow-sm w-100 py-3 fw-bold text-dark" onclick="openAdjustModal()">
-                            <i class="fa-solid fa-scale-balanced d-block fs-4 text-warning mb-1"></i>Корректировка
-                        </button>
-                    </div>
-                </div>
-
-                <div class="mb-3"><label class="form-label text-muted small mb-1">Название счета</label><input type="text" id="editAccName" class="form-control fw-bold"></div>
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label class="form-label text-muted small mb-1">Цвет</label>
-                        <select id="editAccColor" class="form-select fw-bold">
-                            <option value="linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)">🔵 Синий (ВТБ, Авито)</option>
-<option value="linear-gradient(135deg, #052c65 0%, #031633 100%)">🌌 Темно-синий (Газпром, Совком)</option>
-<option value="linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%)">🌐 Голубой (Ozon, VK Pay)</option>
-
-<option value="linear-gradient(135deg, #198754 0%, #146c43 100%)">🟢 Зеленый (Сбер)</option>
-<option value="linear-gradient(135deg, #20c997 0%, #1aa179 100%)">🍏 Мятный (Россельхоз)</option>
-
-<option value="linear-gradient(135deg, #ffc107 0%, #d39e00 100%)">🟡 Желтый (Т-Банк, Яндекс)</option>
-<option value="linear-gradient(135deg, #fd7e14 0%, #c86210 100%)">🟠 Оранжевый (Райффайзен)</option>
-
-<option value="linear-gradient(135deg, #dc3545 0%, #b02a37 100%)">🔴 Красный (Альфа, МТС)</option>
-<option value="linear-gradient(135deg, #d63384 0%, #ab296a 100%)">💖 Розовый (Wildberries)</option>
-
-<option value="linear-gradient(135deg, #6f42c1 0%, #59359a 100%)">🟣 Фиолетовый (ЮMoney)</option>
-<option value="linear-gradient(135deg, #4b0082 0%, #3c0068 100%)">🔮 Индиго (Точка Банк)</option>
-
-<option value="linear-gradient(135deg, #d4af37 0%, #aa8c2c 100%)">👑 Золотой (Premium)</option>
-<option value="linear-gradient(135deg, #adb5bd 0%, #6c757d 100%)">⚙️ Стальной (Базовый)</option>
-<option value="linear-gradient(135deg, #212529 0%, #1a1e21 100%)">⚫ Черный (Black Edition)</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label text-muted small mb-1">Иконка</label>
-                        <select id="editAccIcon" class="form-select fw-bold">
-                            <option value="fa-wallet">💳 Кошелек</option>
-                            <option value="fa-credit-card">💳 Карта</option>
-                            <option value="fa-building-columns">🏦 Банк</option>
-                            <option value="fa-bullseye">🎯 Цель (Реклама)</option>
-                            <option value="fa-mobile-screen">📱 Телефон</option>
-                            <option value="fa-briefcase">💼 Бизнес</option>
-                            <option value="fa-piggy-bank">🐷 Копилка</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-check form-switch mb-4 p-3 bg-light rounded border">
-                    <input class="form-check-input ms-0 me-2" type="checkbox" id="editAccIsTarget">
-                    <label class="form-check-label fw-bold" for="editAccIsTarget">Это целевой счет (Реклама)</label>
-                    <div class="text-muted" style="font-size: 0.7rem; margin-top: 4px; margin-left: 36px;">Средства на этом счету будут скрыты из "Свободных средств".</div>
-                </div>
-
-                <button class="btn btn-primary w-100 fw-bold py-3 rounded-3 mb-2" onclick="saveEditedAccount()">Сохранить изменения</button>
-                <button class="btn btn-outline-danger w-100 py-2 rounded-3" onclick="deleteAccount()"><i class="fa-solid fa-trash me-2"></i>Удалить счет</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="transferModal" tabindex="-1">
+<div class="modal fade" id="cplModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold">Перевод между счетами</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold">Расходы на рекламу</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
-                <div class="d-flex align-items-center justify-content-between mb-3 bg-light p-3 rounded border">
-                    <div class="text-center w-100">
-                        <small class="text-muted d-block">Откуда</small>
-                        <strong id="transferFromName" class="text-danger"></strong>
-                    </div>
-                    <i class="fa-solid fa-arrow-right mx-3 text-muted"></i>
-                    <div class="text-center w-100">
-                        <small class="text-muted d-block">Куда</small>
-                        <select id="transferToAcc" class="form-select form-select-sm fw-bold bg-white text-success border-success"></select>
-                    </div>
-                </div>
-                <div class="mb-4"><label class="form-label text-muted small mb-1">Сумма перевода (₽)</label><input type="number" id="transferAmount" class="form-control form-control-lg fw-bold text-center" placeholder="0" inputmode="decimal"></div>
-                <button class="btn btn-primary w-100 fw-bold py-2 rounded-3" onclick="executeTransfer()"><i class="fa-solid fa-check me-2"></i>Выполнить перевод</button>
+                <p class="small text-muted mb-3">Здесь отображаются списания с ваших целевых счетов (рекламных кабинетов) за выбранный период. Эти суммы формируют стоимость заявки (CPL).</p>
+                <div id="cplDetailsList" class="d-flex flex-column gap-2 mb-3"></div>
+                <button class="btn btn-primary w-100 fw-bold shadow-sm" data-bs-dismiss="modal">Понятно</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="adjustModal" tabindex="-1">
+<div class="modal fade" id="mastersModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold">Корректировка баланса</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold">Мастера</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
-                <p class="small text-muted mb-3">Введите реальную сумму, которая сейчас находится на счету. Приложение само создаст транзакцию разницы.</p>
-                <div class="mb-4"><label class="form-label text-muted small mb-1">Фактический баланс (₽)</label><input type="number" id="adjustNewBalance" class="form-control form-control-lg fw-bold" placeholder="0" inputmode="decimal"></div>
-                <button class="btn btn-primary w-100 fw-bold py-2 rounded-3" onclick="executeAdjust()">Скорректировать</button>
+                <div class="d-flex gap-2 mb-4">
+                    <input type="text" id="newMasterName" class="form-control" placeholder="Имя мастера">
+                    <button class="btn btn-primary shadow-sm" onclick="addMaster()"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                <ul class="list-group list-group-flush border-top" id="mastersList"></ul>
             </div>
         </div>
     </div>
 </div>
-
-<div class="modal fade" id="addCategoryModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow"><div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold" id="categoryModalTitle">Новая категория</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="text" id="newCategoryName" class="form-control mb-3" placeholder="Название (например, Кофе)"><button class="btn btn-primary w-100 fw-bold" onclick="saveNewCategory()">Добавить</button></div></div></div></div>
 
 <div class="modal fade" id="dateRangeModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -376,23 +525,25 @@
                     <div style="width: 14.28%" class="text-danger">Вс</div>
                 </div>
                 <div id="calDays" class="d-flex flex-wrap text-center"></div>
-                
-                <div class="mt-3 text-center small bg-light p-2 rounded-3 text-primary fw-bold" id="calSelectedText">
-                    Выберите начальную дату
-                </div>
+                <div class="mt-3 text-center small bg-light p-2 rounded-3 text-primary fw-bold" id="calSelectedText">Выберите начальную дату</div>
                 <button class="btn btn-primary w-100 fw-bold mt-3 shadow-sm" onclick="applyDateRange()" id="btnApplyRange" disabled>Применить</button>
             </div>
         </div>
     </div>
 </div>
 
-<div id="loadingOverlay" class="loading-overlay d-none"><div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div><h6 class="mt-3 fw-bold text-dark opacity-75">Считаем статистику...</h6></div>
+<div id="loadingOverlay" class="loading-overlay d-none">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+    <h6 class="mt-3 fw-bold text-dark opacity-75">Считаем статистику...</h6>
+</div>
+
 <button id="scrollTopBtn" class="scroll-top-btn" onclick="scrollToTop()"><i class="fa-solid fa-arrow-up"></i></button>
 
 <script src="file:///android_asset/js/jquery.min.js"></script>
 <script src="file:///android_asset/js/raphael.min.js"></script>
 <script src="file:///android_asset/js/morris.min.js"></script>
 <script src="file:///android_asset/js/bootstrap.bundle.min.js"></script>
+<script src="streets.js"></script>
 
 <script>
 
@@ -413,680 +564,857 @@ function smartAutoBackup(appName) {
         }
     }, 10000); // 10 000 мс = 10 секунд
 }
-
     
-    const DB_NAME = "finance_bus.db";
-    let allCategories = [];
-    let allAccounts = [];
+const DB_NAME = "finance_bus.db";
+const orderModal = new bootstrap.Modal(document.getElementById('orderModal'));
+
+// === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
+let allOrders = [];
+let allMasters = [];
+let currentViewedOrder = null;
+let currentMainFilter = 'scheduled'; 
+let currentOffset = 0;        
+const LOAD_LIMIT = 20;        
+let isLoading = false;        
+let hasMoreData = true;       
+
+let statsCurrentFilter = 'all'; 
+let statsOffset = 0;
+let statsIsLoading = false;
+let statsHasMoreData = true;
+
+let searchQuery = "";
+let searchTimeout = null;
+
+window.addEventListener('popstate', function(event) {
+    const state = event.state;
+    if (document.getElementById('orderModal').classList.contains('show')) orderModal.hide();
     
-    let currentOffset = 0;
-    const LOAD_LIMIT = 20;
-    let isLoading = false;
-    let hasMoreData = true;
+    if (!state || !state.page) {
+        document.getElementById('detailScreen').classList.add('d-none');
+        document.getElementById('statsScreen').classList.add('d-none');
+        document.getElementById('mainScreen').classList.remove('d-none');
+        currentViewedOrder = null;
+        updateGlobalCounters();
+    } else if (state.page === 'detail') {
+        document.getElementById('mainScreen').classList.add('d-none');
+        document.getElementById('statsScreen').classList.add('d-none');
+        document.getElementById('detailScreen').classList.remove('d-none');
+    } else if (state.page === 'stats') {
+        document.getElementById('mainScreen').classList.add('d-none');
+        document.getElementById('detailScreen').classList.add('d-none');
+        document.getElementById('statsScreen').classList.remove('d-none');
+    }
+});
 
-    let currentEditAccountId = null;
-    let currentAccountBalance = 0;
+document.getElementById('orderModal').addEventListener('hide.bs.modal', function () {
+    if (history.state && history.state.page === 'modal') history.back();
+});
 
-    const addModal = new bootstrap.Modal(document.getElementById('addModal'));
-    const accModal = new bootstrap.Modal(document.getElementById('addAccountModal'));
-    const categoryModal = new bootstrap.Modal(document.getElementById('addCategoryModal'));
-    let editAccModal, transferModal, adjustModal;
+function initDb() {
+    if (!window.Android || !window.Android.executeSql) return;
 
-    window.addEventListener('popstate', function(event) {
-        const state = event.state;
-        if (document.getElementById('addModal').classList.contains('show')) addModal.hide();
-        if (document.getElementById('editAccountModal').classList.contains('show')) editAccModal.hide();
-        
-        if (!state || !state.page) {
-            document.getElementById('statsScreen').classList.add('d-none');
-            document.getElementById('mainScreen').classList.remove('d-none');
-            updateBalancesFast();
-            loadTransactions(true);
-        } else if (state.page === 'stats') {
-            document.getElementById('mainScreen').classList.add('d-none');
-            document.getElementById('statsScreen').classList.remove('d-none');
-        }
-    });
+    window.Android.executeSql(DB_NAME, `
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY, address TEXT, client_name TEXT, phone TEXT,
+            description TEXT, total_sum REAL, parts_sum REAL, net_sum REAL,
+            timestamp INTEGER, status TEXT DEFAULT 'active', closed_timestamp INTEGER, master_id INTEGER DEFAULT 0, scheduled_timestamp INTEGER, warranty_period TEXT DEFAULT ''
+        )
+    `);
+    
+    window.Android.executeSql(DB_NAME, `
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, amount REAL, 
+            category TEXT, note TEXT, timestamp INTEGER, source_app TEXT DEFAULT 'finance', account_id INTEGER DEFAULT 1
+        )
+    `);
 
-    document.addEventListener('DOMContentLoaded', () => {
-        editAccModal = new bootstrap.Modal(document.getElementById('editAccountModal'));
-        transferModal = new bootstrap.Modal(document.getElementById('transferModal'));
-        adjustModal = new bootstrap.Modal(document.getElementById('adjustModal'));
-        
-        const modals = ['addModal', 'editAccountModal', 'transferModal', 'adjustModal'];
-        modals.forEach(id => {
-            document.getElementById(id).addEventListener('hide.bs.modal', function () {
-                if (history.state && history.state.page === 'modal') history.back();
-            });
-        });
-        initDb();
-    });
+    window.Android.executeSql(DB_NAME, `CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type TEXT, is_target INTEGER DEFAULT 0)`);
+    window.Android.executeSql(DB_NAME, `CREATE TABLE IF NOT EXISTS masters (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`);
 
-    function initDb() {
-        if (!window.Android) return;
-        window.Android.executeSql(DB_NAME, `CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, amount REAL, category TEXT, note TEXT, timestamp INTEGER, source_app TEXT DEFAULT 'finance', account_id INTEGER DEFAULT 1)`);
-        window.Android.executeSql(DB_NAME, `CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type TEXT)`);
-        window.Android.executeSql(DB_NAME, `CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type TEXT, is_target INTEGER DEFAULT 0)`);
-        
-        try { window.Android.executeSql(DB_NAME, `ALTER TABLE transactions ADD COLUMN account_id INTEGER DEFAULT 1`); } catch(e) {}
-        try { window.Android.executeSql(DB_NAME, `ALTER TABLE accounts ADD COLUMN is_target INTEGER DEFAULT 0`); } catch(e) {}
-        try { window.Android.executeSql(DB_NAME, `ALTER TABLE accounts ADD COLUMN color TEXT DEFAULT 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)'`); } catch(e) {}
-        try { window.Android.executeSql(DB_NAME, `ALTER TABLE accounts ADD COLUMN icon TEXT DEFAULT 'fa-wallet'`); } catch(e) {}
-        seedDataIfEmpty();
-        allCategories = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM categories ORDER BY name ASC"));
-        
-        updateCategorySelect();
-        updateBalancesFast(); 
-        loadTransactions(true); 
+    try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'active'`); window.Android.executeSql(DB_NAME, `UPDATE orders SET status = 'completed' WHERE is_completed = 1 AND status = 'active'`); } catch(e) {}
+    try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN closed_timestamp INTEGER`); window.Android.executeSql(DB_NAME, `UPDATE orders SET closed_timestamp = timestamp + 86400000 WHERE status NOT IN ('active', 'scheduled') AND closed_timestamp IS NULL`); } catch(e) {}
+    try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN master_id INTEGER DEFAULT 0`); } catch(e) {}
+    try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN scheduled_timestamp INTEGER`); } catch(e) {}
+    try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN warranty_period TEXT DEFAULT ''`); } catch(e) {}
+    
+    loadMasters();
+    updateGlobalCounters();
+    loadOrders(true);
+}
+
+function loadMasters() {
+    try { allMasters = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM masters ORDER BY name ASC")); } catch(e) { allMasters = []; }
+    
+    const omSelect = document.getElementById('orderMaster');
+    if (omSelect) {
+        omSelect.innerHTML = '<option value="0">Не выбран</option>';
+        allMasters.forEach(m => omSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`);
+    }
+    
+    const stSelect = document.getElementById('statsMaster');
+    if (stSelect) {
+        stSelect.innerHTML = '<option value="all">Все мастера</option>';
+        allMasters.forEach(m => stSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`);
     }
 
-    function seedDataIfEmpty() {
+    const list = document.getElementById('mastersList');
+    if (list) {
+        list.innerHTML = '';
+        allMasters.forEach(m => {
+            list.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center py-3"><span class="fw-bold">${m.name}</span><button class="btn btn-outline-danger btn-sm rounded-circle" onclick="deleteMaster(${m.id})"><i class="fa-solid fa-trash"></i></button></li>`;
+        });
+    }
+}
+
+function openMastersModal() { new bootstrap.Modal(document.getElementById('mastersModal')).show(); }
+
+function addMaster() {
+    const name = document.getElementById('newMasterName').value.trim().replace(/'/g, "''");
+    if (!name) return;
+    window.Android.executeSql(DB_NAME, `INSERT INTO masters (name) VALUES ('${name}')`);
+    document.getElementById('newMasterName').value = '';
+    loadMasters();
+}
+
+function deleteMaster(id) {
+    if(confirm("Удалить мастера?")) {
+        window.Android.executeSql(DB_NAME, `DELETE FROM masters WHERE id=${id}`);
+        loadMasters();
+    }
+}
+
+function updateGlobalCounters() {
+    try {
+        const res = JSON.parse(window.Android.querySql(DB_NAME, "SELECT status, COUNT(*) as c FROM orders GROUP BY status"));
+        let counts = { active: 0, completed: 0, warranty: 0, refused: 0, cancelled: 0, scheduled: 0 };
+        res.forEach(r => { counts[r.status] = r.c; });
+        
+        if (document.getElementById('mc_active')) document.getElementById('mc_active').innerText = counts.active;
+        if (document.getElementById('mc_completed')) document.getElementById('mc_completed').innerText = counts.completed;
+        if (document.getElementById('mc_warranty')) document.getElementById('mc_warranty').innerText = counts.warranty;
+        if (document.getElementById('mc_refused')) document.getElementById('mc_refused').innerText = counts.refused;
+        if (document.getElementById('mc_cancelled')) document.getElementById('mc_cancelled').innerText = counts.cancelled;
+        if (document.getElementById('mc_scheduled')) document.getElementById('mc_scheduled').innerText = counts.scheduled;
+    } catch(e) {}
+}
+
+function handleSearch(query) {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { searchQuery = query.trim().toLowerCase().replace(/'/g, "''"); loadOrders(true); }, 300);
+}
+
+function setMainFilter(filterType) {
+    if (currentMainFilter === filterType) return;
+    currentMainFilter = filterType;
+    ['scheduled', 'active', 'completed', 'warranty', 'refused', 'cancelled'].forEach(f => {
+        const tab = document.getElementById('tab_' + f);
+        if (tab) {
+            if (f === filterType) tab.classList.add('active', 'shadow-sm'); else tab.classList.remove('active', 'shadow-sm');
+        }
+    });
+    loadOrders(true);
+}
+
+function loadOrders(reset = false) {
+    if (reset) {
+        currentOffset = 0; hasMoreData = true; allOrders = []; document.getElementById('ordersList').innerHTML = ''; updateGlobalCounters();
         try {
-            if (JSON.parse(window.Android.querySql(DB_NAME, "SELECT COUNT(*) as c FROM categories"))[0].c === 0) {
-                const defCat = ["('Продукты', 'expense')", "('Транспорт', 'expense')", "('Реклама', 'expense')", "('Бизнес (Запчасти)', 'expense')", "('Зарплата', 'income')", "('Услуги ремонта', 'income')", "('Перевод', 'income')", "('Перевод', 'expense')", "('Корректировка', 'income')", "('Корректировка', 'expense')"];
-                window.Android.executeSql(DB_NAME, `INSERT INTO categories (name, type) VALUES ${defCat.join(',')}`);
-            }
-            if (JSON.parse(window.Android.querySql(DB_NAME, "SELECT COUNT(*) as c FROM accounts"))[0].c === 0) {
-                window.Android.executeSql(DB_NAME, `INSERT INTO accounts (id, name, type, is_target) VALUES (1, 'Наличные', 'cash', 0)`);
-                window.Android.executeSql(DB_NAME, `INSERT INTO accounts (id, name, type, is_target) VALUES (2, 'Основная карта', 'card', 0)`);
-            }
+            const sumResult = JSON.parse(window.Android.querySql(DB_NAME, "SELECT SUM(net_sum) as total FROM orders WHERE status IN ('completed', 'warranty', 'refused', 'cancelled')"));
+            if(document.getElementById('totalNetProfit')) document.getElementById('totalNetProfit').innerText = Number(sumResult[0].total || 0).toLocaleString('ru-RU') + ' ₽';
         } catch (e) {}
     }
+    if (!hasMoreData || isLoading) return;
+    isLoading = true;
 
-    function updateBalancesFast() {
-        allAccounts = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM accounts ORDER BY id ASC"));
-        updateAccountSelect();
-
-        const sql = "SELECT account_id, type, SUM(amount) as total FROM transactions GROUP BY account_id, type";
-        let rows = [];
-        try { rows = JSON.parse(window.Android.querySql(DB_NAME, sql)); } catch(e){}
-        
-        let balances = {};
-        allAccounts.forEach(acc => balances[acc.id] = 0);
-        let totalFree = 0;
-
-        rows.forEach(row => {
-            const accId = row.account_id || 1;
-            const amt = parseFloat(row.total);
-            if (balances[accId] !== undefined) {
-                if (row.type === 'income') balances[accId] += amt;
-                else balances[accId] -= amt;
-            }
-        });
-
-        const accContainer = document.getElementById('accountsList');
-        accContainer.innerHTML = '';
-
-        // В функции updateBalancesFast() ЗАМЕНИТЕ цикл allAccounts.forEach на этот:
-        allAccounts.forEach(acc => {
-            if (!acc.is_target) {
-                totalFree += balances[acc.id];
-            }
-
-            const targetBadge = acc.is_target ? '<span class="badge bg-light text-dark position-absolute top-0 end-0 m-2" style="font-size: 0.6rem; opacity: 0.8;"><i class="fa-solid fa-bullseye text-danger me-1"></i>Целевой</span>' : '';
-            
-            // Если у счета еще нет цвета/иконки (старые записи), даем им дефолт
-            let bgColor = acc.color || 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)';
-            let iconClass = acc.icon || 'fa-wallet';
-            
-            // Обратная совместимость: если тип был cash/credit из старой версии, красим принудительно, если у них нет колонки color
-            if (!acc.color) {
-                if (acc.type === 'cash') bgColor = 'linear-gradient(135deg, #198754 0%, #146c43 100%)';
-                if (acc.type === 'credit') { bgColor = 'linear-gradient(135deg, #dc3545 0%, #b02a37 100%)'; iconClass = 'fa-building-columns'; }
-            }
-
-            accContainer.innerHTML += `
-                <div class="card account-card shadow-sm" style="background: ${bgColor};" onclick="openEditAccountModal(${acc.id}, ${balances[acc.id]})">
-                    ${targetBadge}
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <i class="fa-solid ${iconClass} fs-5 opacity-75"></i>
-                    </div>
-                    <small class="opacity-75 text-truncate d-block" style="max-width: 100px;">${acc.name}</small>
-                    <h5 class="fw-bold mb-0 mt-1">${Number(balances[acc.id]).toLocaleString('ru-RU')} ₽</h5>
-                </div>
-            `;
-        });
-        accContainer.innerHTML += `<div class="card account-card shadow-sm acc-add" onclick="showAddAccountModal()"><i class="fa-solid fa-plus"></i></div>`;
-        document.getElementById('totalBalanceAll').innerText = Number(totalFree).toLocaleString('ru-RU') + ' ₽';
-    }
-
-    function showAddAccountModal() { document.getElementById('newAccName').value = ''; document.getElementById('newAccIsTarget').checked = false; accModal.show(); }
+    let sqlCondition = `status='${currentMainFilter}'`;
+    if (searchQuery) sqlCondition += ` AND (LOWER(address) LIKE '%${searchQuery}%' OR phone LIKE '%${searchQuery}%' OR LOWER(client_name) LIKE '%${searchQuery}%')`;
     
-    function saveNewAccount() {
-        const name = document.getElementById('newAccName').value.trim().replace(/'/g, "''");
-        const color = document.getElementById('newAccColor').value;
-        const icon = document.getElementById('newAccIcon').value;
-        const isTarget = document.getElementById('newAccIsTarget').checked ? 1 : 0;
-        if (!name) return;
-        window.Android.executeSql(DB_NAME, `INSERT INTO accounts (name, type, is_target, color, icon) VALUES ('${name}', 'custom', ${isTarget}, '${color}', '${icon}')`);
-        accModal.hide();
-        updateBalancesFast();
-    }
+    let orderRule = currentMainFilter === 'scheduled' ? 'ORDER BY scheduled_timestamp ASC' : 'ORDER BY timestamp DESC';
+    const sql = `SELECT * FROM orders WHERE ${sqlCondition} ${orderRule} LIMIT ${LOAD_LIMIT} OFFSET ${currentOffset}`;
+    
+    try {
+        const newOrders = JSON.parse(window.Android.querySql(DB_NAME, sql));
+        if (newOrders.length < LOAD_LIMIT) hasMoreData = false;
+        allOrders = allOrders.concat(newOrders);
+        currentOffset += newOrders.length;
+        renderOrdersChunk(newOrders, 'ordersList', reset);
+    } catch (e) {}
+    isLoading = false;
+}
 
-    function openEditAccountModal(id, bal) {
-        const acc = allAccounts.find(a => a.id === id);
-        if(!acc) return;
-        currentEditAccountId = id;
-        currentAccountBalance = bal;
-        
-        document.getElementById('editAccName').value = acc.name;
-        // Устанавливаем цвет и иконку (если это старый счет без них - ставим дефолтные)
-        document.getElementById('editAccColor').value = acc.color || 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)';
-        document.getElementById('editAccIcon').value = acc.icon || 'fa-wallet';
-        document.getElementById('editAccIsTarget').checked = (acc.is_target == 1);
-        document.getElementById('editAccBalance').innerText = Number(bal).toLocaleString('ru-RU') + ' ₽';
-        
-        editAccModal.show();
-        history.pushState({ page: 'modal' }, "Modal", "#modal");
-    }
-
-    function saveEditedAccount() {
-        const name = document.getElementById('editAccName').value.trim().replace(/'/g, "''");
-        const color = document.getElementById('editAccColor').value;
-        const icon = document.getElementById('editAccIcon').value;
-        const isTarget = document.getElementById('editAccIsTarget').checked ? 1 : 0;
-        if (!name) return;
-        window.Android.executeSql(DB_NAME, `UPDATE accounts SET name='${name}', is_target=${isTarget}, color='${color}', icon='${icon}' WHERE id=${currentEditAccountId}`);
-        smartAutoBackup('finance');editAccModal.hide();
-        updateBalancesFast();
-        loadTransactions(true); 
-    }
-
-    function deleteAccount() {
-        if(confirm("Удалить счет? Все операции по этому счету останутся в базе (привяжутся к удаленному счету).")) {
-            window.Android.executeSql(DB_NAME, `DELETE FROM accounts WHERE id=${currentEditAccountId}`);
-            editAccModal.hide();
-            updateBalancesFast();
-        }
-    }
-
-    function openTransferModal() {
-        editAccModal.hide();
-        const fromAcc = allAccounts.find(a => a.id === currentEditAccountId);
-        document.getElementById('transferFromName').innerText = fromAcc.name;
-        
-        const selectTo = document.getElementById('transferToAcc');
-        selectTo.innerHTML = '';
-        allAccounts.forEach(a => {
-            if (a.id !== currentEditAccountId) { selectTo.innerHTML += `<option value="${a.id}">${a.name}</option>`; }
-        });
-        if (selectTo.options.length === 0) { alert("У вас только один счет. Перевод невозможен."); return; }
-
-        document.getElementById('transferAmount').value = '';
-        setTimeout(() => { transferModal.show(); history.pushState({ page: 'modal' }, "Modal", "#modal"); }, 400);
-    }
-
-    function executeTransfer() {
-        const fromId = currentEditAccountId;
-        const toId = parseInt(document.getElementById('transferToAcc').value);
-        const amount = parseFloat(document.getElementById('transferAmount').value);
-        
-        if (isNaN(amount) || amount <= 0) { alert("Укажите сумму"); return; }
-        
-        const fromAcc = allAccounts.find(a => a.id === fromId);
-        const toAcc = allAccounts.find(a => a.id === toId);
-        const ts = Date.now();
-        
-        const checkCat = allCategories.find(c => c.name === 'Перевод' && c.type === 'expense');
-        if(!checkCat) {
-            window.Android.executeSql(DB_NAME, `INSERT INTO categories (name, type) VALUES ('Перевод', 'expense'), ('Перевод', 'income')`);
-            allCategories = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM categories ORDER BY name ASC"));
-        }
-
-        window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app, account_id) VALUES ('expense', ${amount}, 'Перевод', 'На счет: ${toAcc.name.replace(/'/g, "''")}', ${ts}, 'finance', ${fromId})`);
-        window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app, account_id) VALUES ('income', ${amount}, 'Перевод', 'Со счета: ${fromAcc.name.replace(/'/g, "''")}', ${ts}, 'finance', ${toId})`);
-        
-        smartAutoBackup('finance');transferModal.hide();
-        updateBalancesFast();
-        loadTransactions(true);
-    }
-
-    function openAdjustModal() {
-        editAccModal.hide();
-        document.getElementById('adjustNewBalance').value = currentAccountBalance;
-        setTimeout(() => { adjustModal.show(); history.pushState({ page: 'modal' }, "Modal", "#modal"); }, 400);
-    }
-
-    function executeAdjust() {
-        const newBalance = parseFloat(document.getElementById('adjustNewBalance').value);
-        if (isNaN(newBalance)) { alert("Введите фактический баланс"); return; }
-        
-        const diff = newBalance - currentAccountBalance;
-        if (diff === 0) { adjustModal.hide(); return; }
-        
-        const type = diff > 0 ? 'income' : 'expense';
-        const amount = Math.abs(diff);
-        const ts = Date.now();
-        
-        const checkCat = allCategories.find(c => c.name === 'Корректировка' && c.type === 'expense');
-        if(!checkCat) {
-            window.Android.executeSql(DB_NAME, `INSERT INTO categories (name, type) VALUES ('Корректировка', 'expense'), ('Корректировка', 'income')`);
-            allCategories = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM categories ORDER BY name ASC"));
-        }
-
-        window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app, account_id) VALUES ('${type}', ${amount}, 'Корректировка', 'Синхронизация баланса', ${ts}, 'finance', ${currentEditAccountId})`);
-        
-        smartAutoBackup('finance');adjustModal.hide();
-        updateBalancesFast();
-        loadTransactions(true);
-    }
-
-    // === ПАГИНАЦИЯ ===
-    function loadTransactions(reset = false) {
-        if (reset) { currentOffset = 0; hasMoreData = true; document.getElementById('transactionsList').innerHTML = ''; }
-        if (!hasMoreData || isLoading) return;
-        isLoading = true;
-
-        const sql = `SELECT * FROM transactions ORDER BY timestamp DESC LIMIT ${LOAD_LIMIT} OFFSET ${currentOffset}`;
-        try {
-            const newTx = JSON.parse(window.Android.querySql(DB_NAME, sql));
-            if (newTx.length < LOAD_LIMIT) hasMoreData = false;
-            currentOffset += newTx.length;
-            renderTxChunk(newTx, 'transactionsList', reset);
-        } catch (e) { console.error(e); }
-        isLoading = false;
-    }
-
-    function renderTxChunk(txChunk, containerId, isReset) {
-        const container = document.getElementById(containerId);
-        if (isReset && txChunk.length === 0) { container.innerHTML = '<p class="text-center text-muted mt-4">Нет операций</p>'; return; }
-
-        let html = '';
-        txChunk.forEach(tx => {
-            const isInc = tx.type === 'income';
-            const isTransfer = tx.category === 'Перевод';
-            const sign = isInc ? '+' : '-';
-            const colorClass = isTransfer ? 'text-secondary' : (isInc ? 'text-success' : '');
-            
-            let iconClass = isInc ? 'icon-income fa-arrow-down' : 'icon-expense fa-cart-shopping';
-            if (isTransfer) iconClass = 'icon-transfer fa-arrow-right-arrow-left';
-
-            const accName = (allAccounts.find(a => a.id === (tx.account_id || 1)) || {}).name || 'Удаленный счет';
-            const dateStr = new Date(tx.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-            const safeTx = JSON.stringify(tx).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
-
-            html += `
-                <div class="card transaction-card shadow-sm mb-1" onclick="openEditTxModal('${safeTx}')">
-                    <div class="card-body p-3 d-flex align-items-center">
-                        <div class="icon-box ${isTransfer ? 'icon-transfer' : (isInc ? 'icon-income' : 'icon-expense')} me-3"><i class="fa-solid ${iconClass}"></i></div>
-                        <div class="flex-grow-1 overflow-hidden">
-                            <h6 class="mb-0 fw-bold text-truncate">${tx.category}</h6>
-                            <small class="text-muted text-truncate d-block">${accName} • ${dateStr}</small>
-                        </div>
-                        <div class="text-end flex-shrink-0 ms-2">
-                            <h6 class="mb-0 fw-bold ${colorClass}">${sign}${Number(tx.amount).toLocaleString('ru-RU')} ₽</h6>
-                            ${tx.source_app === 'crm' ? '<span class="badge bg-info" style="font-size: 0.6rem;">CRM</span>' : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        container.insertAdjacentHTML('beforeend', html);
-    }
-
-    window.addEventListener('scroll', () => {
-        const scrollTopBtn = document.getElementById('scrollTopBtn');
-        const mainFabBtn = document.querySelector('.fab'); 
-        if (window.scrollY > 300) { if(scrollTopBtn) scrollTopBtn.classList.add('visible'); if(mainFabBtn) mainFabBtn.classList.add('fab-hidden'); } 
-        else { if(scrollTopBtn) scrollTopBtn.classList.remove('visible'); if(mainFabBtn) mainFabBtn.classList.remove('fab-hidden'); }
-        if (document.getElementById('mainScreen').classList.contains('d-none')) return;
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) loadTransactions(false);
+function setStatsFilter(filterType) {
+    if (statsCurrentFilter === filterType) return;
+    statsCurrentFilter = filterType;
+    ['all', 'scheduled', 'completed', 'warranty', 'refused', 'cancelled', 'active'].forEach(f => {
+        const tab = document.getElementById('st_' + f);
+        if(!tab) return;
+        if (f === filterType) tab.classList.add('active'); else tab.classList.remove('active');
     });
+    loadStatsOrders(true);
+}
+
+function loadStatsOrders(reset = false) {
+    if (reset) { statsOffset = 0; statsHasMoreData = true; allOrders = []; document.getElementById('statsOrdersList').innerHTML = ''; }
+    if (!statsHasMoreData || statsIsLoading) return;
+    statsIsLoading = true;
+
+    const range = getStatsDateRange();
+    let filterSql = statsCurrentFilter !== 'all' ? ` AND status='${statsCurrentFilter}' ` : '';
+    const masterSql = document.getElementById('statsMaster').value !== 'all' ? ` AND master_id=${document.getElementById('statsMaster').value} ` : '';
     
-    function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    const sql = `SELECT * FROM orders WHERE timestamp >= ${range.startTime} AND timestamp < ${range.endTime} ${filterSql} ${masterSql} ORDER BY timestamp DESC LIMIT ${LOAD_LIMIT} OFFSET ${statsOffset}`;
+    
+    try {
+        const newOrders = JSON.parse(window.Android.querySql(DB_NAME, sql));
+        if (newOrders.length < LOAD_LIMIT) statsHasMoreData = false;
+        allOrders = allOrders.concat(newOrders);
+        statsOffset += newOrders.length;
+        renderOrdersChunk(newOrders, 'statsOrdersList', reset);
+    } catch (e) {}
+    statsIsLoading = false;
+}
 
-    // === ТРАНЗАКЦИИ ===
-    function showAddModal() {
-        document.getElementById('txId').value = ''; 
-        document.getElementById('txModalTitle').innerText = 'Новая операция'; 
-        document.getElementById('txAmount').value = ''; 
-        document.getElementById('txNote').value = ''; 
+function renderOrdersChunk(ordersChunk, containerId, isReset) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    if (isReset && ordersChunk.length === 0) { container.innerHTML = `<p class="text-center text-muted mt-4">Нет заказов</p>`; return; }
+
+    let htmlChunk = '';
+    ordersChunk.forEach(o => {
+        let dateHtml = new Date(o.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        let statusBadge = ''; let cardColor = '';
         
-        // Подставляем текущее время с учетом часового пояса
-        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-        document.getElementById('txDate').value = new Date(Date.now() - tzoffset).toISOString().slice(0, 16);
+        if (o.status === 'scheduled') {
+            statusBadge = '<span class="badge bg-primary">Ожидает</span>'; cardColor = 'scheduled';
+            if (o.scheduled_timestamp) dateHtml = `<span class="text-primary fw-bold"><i class="fa-regular fa-clock me-1"></i>` + new Date(o.scheduled_timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + `</span>`;
+            else dateHtml = `<span class="text-primary fw-bold">Без времени</span>`;
+        }
+        else if (o.status === 'completed') { statusBadge = '<span class="badge bg-success">Ремонт</span>'; cardColor = 'completed'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
+        else if (o.status === 'warranty') { statusBadge = '<span class="badge text-white" style="background-color: #6f42c1;">Гарантия</span>'; cardColor = 'warranty'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
+        else if (o.status === 'refused') { statusBadge = '<span class="badge bg-danger">Отказ</span>'; cardColor = 'refused'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
+        else if (o.status === 'cancelled') { statusBadge = '<span class="badge bg-secondary">Отмена</span>'; cardColor = 'cancelled'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
+        else { statusBadge = '<span class="badge bg-warning text-dark">В работе</span>'; cardColor = ''; }
+        
+        const safeClient = o.client_name ? o.client_name.replace(/'/g, "&apos;") : 'Не указан';
+        const safePhone = o.phone ? o.phone.replace(/'/g, "&apos;") : 'Нет';
 
-        document.getElementById('btnDeleteTx').classList.add('d-none');
-        updateCategorySelect(); 
-        addModal.show(); 
-        history.pushState({ page: 'modal' }, "Modal", "#modal");
+        htmlChunk += `
+            <div class="card order-card shadow-sm ${cardColor}" onclick="openDetailScreen(${o.id})">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="fw-bold mb-0 text-truncate pe-2" style="max-width: 70%; line-height:1.2;">${o.address}</h6>
+                        <div class="text-end" style="font-size: 0.7rem;">${dateHtml}<br>${statusBadge}</div>
+                    </div>
+                    <div class="d-flex align-items-center mb-2" style="font-size: 0.9rem;">
+                        <i class="fa-solid fa-user text-muted me-2"></i> <span class="text-truncate" style="max-width: 100px;">${safeClient}</span>
+                        <span class="mx-2 text-muted">•</span> 
+                        <span class="text-primary"><i class="fa-solid fa-phone me-1"></i>${safePhone}</span>
+                    </div>
+                    <div class="financial-row d-flex justify-content-between text-center small mt-3">
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Общ</span><strong class="text-dark">${Number(o.total_sum || 0).toLocaleString('ru-RU')}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Расх</span><strong class="text-danger">${Number(o.parts_sum || 0).toLocaleString('ru-RU')}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Чист</span><strong class="text-success">${Number(o.net_sum || 0).toLocaleString('ru-RU')}</strong></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    container.insertAdjacentHTML('beforeend', htmlChunk);
+}
+
+window.addEventListener('scroll', () => {
+    const scrollTopBtn = document.getElementById('scrollTopBtn');
+    const mainFabBtn = document.querySelector('.fab'); 
+    if (window.scrollY > 300) { if(scrollTopBtn) scrollTopBtn.classList.add('visible'); if(mainFabBtn) mainFabBtn.classList.add('fab-hidden'); } 
+    else { if(scrollTopBtn) scrollTopBtn.classList.remove('visible'); if(mainFabBtn) mainFabBtn.classList.remove('fab-hidden'); }
+    
+    const isMainVisible = !document.getElementById('mainScreen').classList.contains('d-none');
+    const isStatsVisible = !document.getElementById('statsScreen').classList.contains('d-none');
+    
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
+        if (isMainVisible) loadOrders(false);
+        else if (isStatsVisible) loadStatsOrders(false);
     }
+});
+function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-    function openEditTxModal(txJson) {
-        const tx = JSON.parse(txJson);
-        if (tx.source_app === 'crm') { alert("Эта операция из CRM. Редактируйте сам заказ."); return; }
-        
-        document.getElementById('txId').value = tx.id;
-        document.getElementById('txModalTitle').innerText = 'Редактировать';
-        if (tx.type === 'income') document.getElementById('typeIncome').checked = true;
-        else document.getElementById('typeExpense').checked = true;
-        
-        updateCategorySelect();
-        document.getElementById('txAmount').value = tx.amount;
-        document.getElementById('txAccount').value = tx.account_id || 1;
-        document.getElementById('txCategory').value = tx.category;
-        document.getElementById('txNote').value = tx.note || '';
+function openDetailScreen(orderId) {
+    currentViewedOrder = allOrders.find(o => o.id === orderId);
+    if (!currentViewedOrder) return;
+    const o = currentViewedOrder;
 
-        // Восстанавливаем оригинальное время транзакции
-        const d = new Date(tx.timestamp);
-        const tzoffset = d.getTimezoneOffset() * 60000;
-        document.getElementById('txDate').value = new Date(d - tzoffset).toISOString().slice(0, 16);
-
-        document.getElementById('btnDeleteTx').classList.remove('d-none');
-        
-        addModal.show(); 
-        history.pushState({ page: 'modal' }, "Modal", "#modal");
+    document.getElementById('detAddress').innerText = o.address;
+    document.getElementById('detClient').innerText = o.client_name || 'Не указан';
+    document.getElementById('detPhone').innerText = o.phone || 'Не указан';
+    document.getElementById('detPhoneBtn').href = o.phone ? `tel:${o.phone}` : '#';
+    document.getElementById('detDesc').innerText = o.description || 'Нет описания';
+    document.getElementById('detTotal').innerText = Number(o.total_sum || 0).toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('detParts').innerText = Number(o.parts_sum || 0).toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('detNet').innerText = Number(o.net_sum || 0).toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('detWarranty').innerText = o.warranty_period ? o.warranty_period : 'Нет';
+    
+    let masterName = 'Не выбран';
+    if(o.master_id && allMasters.length) {
+        const fM = allMasters.find(m => m.id === o.master_id);
+        if(fM) masterName = fM.name;
     }
+    document.getElementById('detMaster').innerHTML = `<i class="fa-solid fa-hard-hat me-1"></i>${masterName}`;
 
-   function saveTransaction() {
-        const id = document.getElementById('txId').value;
-        const type = document.querySelector('input[name="txType"]:checked').value;
-        const amount = parseFloat(document.getElementById('txAmount').value);
-        const category = document.getElementById('txCategory').value;
-        const accId = parseInt(document.getElementById('txAccount').value) || 1;
-        const note = document.getElementById('txNote').value.replace(/'/g, "''");
-        
-        // Получаем время из календаря
-        const dateVal = document.getElementById('txDate').value;
-        const ts = dateVal ? new Date(dateVal).getTime() : Date.now();
-        
-        if (isNaN(amount) || amount <= 0) { alert("Сумма?"); return; }
+    let dStr = "Создан: " + new Date(o.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    if (o.status === 'scheduled' && o.scheduled_timestamp) {
+        dStr += `<br><span class="text-primary fw-bold">Визит: ` + new Date(o.scheduled_timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + `</span>`;
+    }
+    if (o.status !== 'active' && o.status !== 'scheduled' && o.closed_timestamp) {
+        dStr += `<br>Закрыт: <i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    }
+    document.getElementById('detDate').innerHTML = dStr;
+    
+    let statusHtml = '';
+    if (o.status === 'completed') statusHtml = '<span class="badge bg-success">Ремонт</span>';
+    else if (o.status === 'warranty') statusHtml = '<span class="badge text-white" style="background-color: #6f42c1;">Гарантия</span>';
+    else if (o.status === 'refused') statusHtml = '<span class="badge bg-danger">Отказ</span>';
+    else if (o.status === 'cancelled') statusHtml = '<span class="badge bg-secondary">Отмена</span>';
+    else if (o.status === 'scheduled') statusHtml = '<span class="badge bg-primary">Ожидает визита</span>';
+    else statusHtml = '<span class="badge bg-warning text-dark">В работе</span>';
+    document.getElementById('detStatus').innerHTML = statusHtml;
 
-        if (id) {
-            window.Android.executeSql(DB_NAME, `UPDATE transactions SET type='${type}', amount=${amount}, category='${category}', note='${note}', account_id=${accId}, timestamp=${ts} WHERE id=${id}`);
+    document.getElementById('mainScreen').classList.add('d-none');
+    document.getElementById('statsScreen').classList.add('d-none'); 
+    document.getElementById('detailScreen').classList.remove('d-none');
+    window.scrollTo(0, 0);
+    history.pushState({ page: 'detail' }, "Detail", "#detail");
+}
+
+function closeDetailScreen() { history.back(); }
+
+function showOrderModal() {
+    document.getElementById('orderId').value = ''; document.getElementById('orderAddress').value = '';
+    document.getElementById('orderClient').value = ''; document.getElementById('orderPhone').value = '';
+    document.getElementById('orderDesc').value = ''; document.getElementById('orderTotal').value = '';
+    document.getElementById('orderParts').value = ''; document.getElementById('orderNet').innerText = '0 ₽';
+    document.getElementById('orderWarranty').value = '';
+    document.getElementById('orderStatus').value = 'scheduled'; 
+    document.getElementById('orderScheduledTime').value = '';
+    
+    const masterSelect = document.getElementById('orderMaster');
+    if(masterSelect && allMasters.length > 0) masterSelect.value = allMasters[allMasters.length-1].id;
+    
+    orderModal.show(); history.pushState({ page: 'modal' }, "Modal", "#modal");
+}
+
+function openEditModal() {
+    try {
+        if (!currentViewedOrder) return;
+        const o = currentViewedOrder;
+        document.getElementById('orderId').value = o.id || ''; document.getElementById('orderAddress').value = o.address || '';
+        document.getElementById('orderClient').value = o.client_name || ''; document.getElementById('orderPhone').value = o.phone || '';
+        document.getElementById('orderDesc').value = o.description || ''; document.getElementById('orderTotal').value = o.total_sum || '';
+        document.getElementById('orderParts').value = o.parts_sum || ''; document.getElementById('orderStatus').value = o.status || 'scheduled';
+        document.getElementById('orderMaster').value = o.master_id || 0;
+        document.getElementById('orderWarranty').value = o.warranty_period || '';
+        
+        if (o.scheduled_timestamp) {
+            const d = new Date(o.scheduled_timestamp);
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            const localISOTime = new Date(d - tzoffset).toISOString().slice(0, 16);
+            document.getElementById('orderScheduledTime').value = localISOTime;
         } else {
-            window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app, account_id) VALUES ('${type}', ${amount}, '${category}', '${note}', ${ts}, 'finance', ${accId})`);
+            document.getElementById('orderScheduledTime').value = '';
         }
-        smartAutoBackup('finance');
-        addModal.hide(); 
-        updateBalancesFast(); 
-        loadTransactions(true);
-    }
 
-    function deleteTx() {
-        const id = document.getElementById('txId').value;
-        if (confirm("Удалить операцию?")) {
-            window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE id=${id}`);
-            smartAutoBackup('finance');addModal.hide(); updateBalancesFast(); loadTransactions(true);
-        }
-    }
+        calcNet(); orderModal.show();
+        try { history.pushState({ page: 'modal' }, "Modal", "#modal"); } catch(e) {}
+    } catch (e) {}
+}
 
-    function updateCategorySelect() {
-        const type = document.querySelector('input[name="txType"]:checked').value;
-        const select = document.getElementById('txCategory');
-        select.innerHTML = '';
-        allCategories.filter(c => c.type === type).forEach(c => select.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+function calcNet() {
+    const total = parseFloat(document.getElementById('orderTotal').value) || 0;
+    const parts = parseFloat(document.getElementById('orderParts').value) || 0;
+    document.getElementById('orderNet').innerText = (total - parts) + ' ₽';
+}
+
+function deleteOrder() {
+    if (!currentViewedOrder) return;
+    const orderId = currentViewedOrder.id;
+    if (confirm("Удалить заказ и связанные транзакции?")) {
+        window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
+        window.Android.executeSql(DB_NAME, `DELETE FROM orders WHERE id=${orderId}`);
+        updateGlobalCounters();
+        if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
+        else loadOrders(true); 
+        smartAutoBackup('crm');
+        history.back(); 
     }
-    function updateAccountSelect() {
-        const select = document.getElementById('txAccount');
-        select.innerHTML = '';
-        allAccounts.forEach(a => select.innerHTML += `<option value="${a.id}">${a.name}</option>`);
-    }
+}
+
+function saveOrder() {
+    const idInput = document.getElementById('orderId').value; const orderId = idInput ? parseInt(idInput) : Date.now();
+    const address = document.getElementById('orderAddress').value.replace(/'/g, "''"); const client = document.getElementById('orderClient').value.replace(/'/g, "''");
+    const phone = document.getElementById('orderPhone').value.replace(/'/g, "''"); const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
+    const warranty = document.getElementById('orderWarranty').value.replace(/'/g, "''");
+    const total = parseFloat(document.getElementById('orderTotal').value) || 0; const parts = parseFloat(document.getElementById('orderParts').value) || 0;
+    const net = total - parts; const status = document.getElementById('orderStatus').value;
+    const masterId = parseInt(document.getElementById('orderMaster').value) || 0;
     
-    function showCategoryModal() {
-        document.getElementById('newCategoryName').value = '';
-        document.getElementById('categoryModalTitle').innerText = document.querySelector('input[name="txType"]:checked').value === 'expense' ? 'Новая категория расхода' : 'Новая категория дохода';
-        addModal.hide(); setTimeout(() => categoryModal.show(), 400); 
-    }
-    function saveNewCategory() {
-        const name = document.getElementById('newCategoryName').value.trim().replace(/'/g, "''");
-        if (!name) return;
-        const type = document.querySelector('input[name="txType"]:checked').value;
-        window.Android.executeSql(DB_NAME, `INSERT INTO categories (name, type) VALUES ('${name}', '${type}')`);
-        categoryModal.hide();
-        allCategories = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM categories ORDER BY name ASC"));
-        updateCategorySelect();
-        setTimeout(() => { addModal.show(); document.getElementById('txCategory').value = name; }, 400);
+    const schedVal = document.getElementById('orderScheduledTime').value;
+    const schedTs = schedVal ? new Date(schedVal).getTime() : 'NULL';
+
+    let closedTs = 'NULL';
+    if (status !== 'active' && status !== 'scheduled') {
+        if (currentViewedOrder && currentViewedOrder.status !== 'active' && currentViewedOrder.status !== 'scheduled' && currentViewedOrder.closed_timestamp) closedTs = currentViewedOrder.closed_timestamp;
+        else closedTs = Date.now(); 
     }
 
-    // === ТЕСТИРОВАНИЕ ПРОИЗВОДИТЕЛЬНОСТИ ===
-    function generateTestTx() {
-        if (!confirm("Добавить 10 000 случайных операций?")) return;
-        const btn = document.getElementById('btnGenerate'); btn.disabled = true; btn.innerText = "Идет генерация...";
-        const catsInc = allCategories.filter(c => c.type === 'income'); const catsExp = allCategories.filter(c => c.type === 'expense');
-        let totalInserted = 0;
-        function insertBatch() {
-            let sql = "INSERT INTO transactions (type, amount, category, note, timestamp, source_app, account_id) VALUES ";
-            let values = [];
-            for (let i = 0; i < 500; i++) {
-                const isInc = Math.random() > 0.7; 
-                const type = isInc ? 'income' : 'expense';
-                const catArr = isInc ? catsInc : catsExp;
-                const cat = (catArr.length > 0 ? catArr[Math.floor(Math.random() * catArr.length)].name : 'Тест');
-                const amt = Math.floor(Math.random() * (isInc ? 50000 : 5000)) + 100;
-                const accId = allAccounts.length > 0 ? allAccounts[Math.floor(Math.random() * allAccounts.length)].id : 1;
-                const ts = Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000); 
-                values.push(`('${type}', ${amt}, '${cat}', 'Тест', ${ts}, 'finance', ${accId})`);
-            }
-            window.Android.executeSql(DB_NAME, sql + values.join(", "));
-            totalInserted += 500;
-            if (totalInserted < 10000) { btn.innerText = `Добавлено: ${totalInserted} / 10000`; setTimeout(insertBatch, 20); } 
-            else { btn.disabled = false; btn.innerText = "Сгенерировать 10 000 записей"; updateBalancesFast(); loadTransactions(true); alert("Успешно добавлено!"); }
-        }
-        insertBatch();
-    }
+    const ts = idInput ? (currentViewedOrder ? currentViewedOrder.timestamp : Date.now()) : orderId;
 
-    function clearFinanceDb() {
-        if (!confirm("ВНИМАНИЕ! Удалить все тестовые операции?")) return;
-        window.Android.executeSql(DB_NAME, "DELETE FROM transactions WHERE source_app='finance' AND note='Тест'");
-        updateBalancesFast(); loadTransactions(true); alert("Очищено!");
-    }
+    let sql = idInput 
+        ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, status='${status}', closed_timestamp=${closedTs}, master_id=${masterId}, scheduled_timestamp=${schedTs}, warranty_period='${warranty}' WHERE id=${orderId}`
+        : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp, warranty_period) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs}, '${warranty}')`;
+    
+    window.Android.executeSql(DB_NAME, sql);
+    window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
 
-    // === АНАЛИТИКА ФИНАНСОВ ===
-    function openStatsScreen() {
-        document.getElementById('mainScreen').classList.add('d-none');
-        document.getElementById('statsScreen').classList.remove('d-none');
+    if (status === 'completed' || status === 'warranty' || status === 'refused' || status === 'cancelled') {
+        let noteCategory = 'Услуги ремонта';
+        if (status === 'warranty') noteCategory = 'Гарантийный выезд';
+        else if (status === 'refused' || status === 'cancelled') noteCategory = 'Платный отказ / Выезд';
         
-        const yearSelect = document.getElementById('statsYear');
-        if (yearSelect.options.length === 0) {
-            const currentYear = new Date().getFullYear();
-            for (let y = currentYear; y >= 2023; y--) {
-                yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
-            }
-        }
-        document.getElementById('statsMonth').value = new Date().getMonth();
-
-        window.scrollTo(0, 0);
-        history.pushState({ page: 'stats' }, "Stats", "#stats");
-        triggerCalculateStats();
+        if (total > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${total}, '${noteCategory}', '[CRM-${orderId}] ${address}', ${Date.now()}, 'crm')`);
+        if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
     }
+smartAutoBackup('crm');
+    orderModal.hide(); updateGlobalCounters();
+    
+    if (!document.getElementById('mainScreen').classList.contains('d-none')) loadOrders(true); 
+    else if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
+    if (!document.getElementById('detailScreen').classList.contains('d-none')) closeDetailScreen();
+}
 
-    function closeStatsScreen() { history.back(); }
+function handleContactSearch(query) {
+    const dropdown = document.getElementById('contactSuggestions');
+    if (!query || query.length < 2) { dropdown.style.display = 'none'; return; }
+    if (window.Android && window.Android.searchContacts) {
+        const contacts = JSON.parse(window.Android.searchContacts(query));
+        if (contacts.length === 0) { dropdown.style.display = 'none'; return; }
+        dropdown.innerHTML = '';
+        contacts.forEach(c => {
+            const safeName = c.name.replace(/'/g, "\\'"); const safePhone = c.phone.replace(/'/g, "\\'");
+            dropdown.innerHTML += `<li><a class="dropdown-item py-2" href="#" onclick="selectContact('${safeName}', '${safePhone}'); return false;"><div class="d-flex justify-content-between align-items-center"><span class="fw-bold text-truncate" style="max-width: 60%;">${c.name}</span><span class="small text-muted">${c.phone}</span></div></a></li>`;
+        });
+        dropdown.style.display = 'block';
+    }
+}
+function selectContact(name, phone) { document.getElementById('orderClient').value = name; document.getElementById('orderPhone').value = phone; document.getElementById('contactSuggestions').style.display = 'none'; }
+function handleAddressSearch(query) {
+    const dropdown = document.getElementById('addressSuggestions');
+    if (!query || query.trim().length < 2) { dropdown.style.display = 'none'; return; }
+    const searchTerms = query.toLowerCase().trim().split(/\s+/);
+    const matches = (typeof SARATOV_STREETS !== 'undefined' ? SARATOV_STREETS : []).filter(street => {
+        const normalizedStreet = street.toLowerCase().replace(/[-.]/g, ' '); return searchTerms.every(term => normalizedStreet.includes(term));
+    }).slice(0, 10);
+    if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+    dropdown.innerHTML = '';
+    matches.forEach(street => {
+        const safeStreet = street.replace(/'/g, "\\'"); 
+        dropdown.innerHTML += `<li><a class="dropdown-item py-2 text-wrap" href="#" onclick="selectAddress('${safeStreet}'); return false;"><i class="fa-solid fa-location-dot text-muted me-2"></i><span>${street}</span></a></li>`;
+    });
+    dropdown.style.display = 'block';
+}
+function selectAddress(street) { document.getElementById('orderAddress').value = street + ', д. '; document.getElementById('addressSuggestions').style.display = 'none'; document.getElementById('orderAddress').focus(); }
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#contactSuggestions') && !e.target.closest('#orderClient') && !e.target.closest('#orderPhone')) { const el = document.getElementById('contactSuggestions'); if(el) el.style.display = 'none'; }
+    if (!e.target.closest('#addressSuggestions') && !e.target.closest('#orderAddress')) { const el = document.getElementById('addressSuggestions'); if(el) el.style.display = 'none'; }
+});
 
-    function togglePeriodSelector() {
-        const period = document.getElementById('statsPeriod').value;
-        const customBox = document.getElementById('customMonthSelector');
-        const rangeInfo = document.getElementById('rangeSelectedInfo');
+
+// === АНАЛИТИКА ===
+function openStatsScreen() {
+    document.getElementById('mainScreen').classList.add('d-none');
+    document.getElementById('statsScreen').classList.remove('d-none');
+    
+    const yearSelect = document.getElementById('statsYear');
+    if (yearSelect && yearSelect.options.length === 0) { 
+        for (let y = new Date().getFullYear(); y >= 2023; y--) yearSelect.innerHTML += `<option value="${y}">${y}</option>`; 
+    }
+    const monthSelect = document.getElementById('statsMonth');
+    if (monthSelect) monthSelect.value = new Date().getMonth();
+
+    window.scrollTo(0, 0); history.pushState({ page: 'stats' }, "Stats", "#stats");
+    triggerCalculateStats();
+}
+
+function closeStatsScreen() { history.back(); }
+
+let rangeModal = null; let calCurrentDate = new Date(); let rangeStart = null; let rangeEnd = null; let dbMinTs = null; let dbMaxTs = null; let finalRangeStart = null; let finalRangeEnd = null;
+
+function togglePeriodSelector() {
+    const period = document.getElementById('statsPeriod').value; 
+    const customBox = document.getElementById('customMonthSelector'); 
+    const rangeInfo = document.getElementById('rangeSelectedInfo');
+    
+    if (customBox) customBox.classList.add('d-none'); 
+    if (rangeInfo) rangeInfo.classList.add('d-none');
+    
+    if (period === 'custom') { 
+        if (customBox) customBox.classList.remove('d-none'); 
+        triggerCalculateStats(); 
+    } 
+    else if (period === 'range') { 
+        if (rangeInfo) rangeInfo.classList.remove('d-none'); 
+        openDateRangeModal(); 
+    } 
+    else { triggerCalculateStats(); }
+}
+
+function getStatsDateRange() {
+    const periodEl = document.getElementById('statsPeriod');
+    const period = periodEl ? periodEl.value : 'month';
+    const now = new Date();
+    let startTime = 0, endTime = 4102444800000; let showLineChart = true; let chartType = 'daily'; 
+    if (period === 'today') { startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); showLineChart = false; } 
+    else if (period === '24h') { startTime = now.getTime() - (24 * 60 * 60 * 1000); showLineChart = false; } 
+    else if (period === 'week') { const day = now.getDay() || 7; startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime(); } 
+    else if (period === 'month') { startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); } 
+    else if (period === 'lastMonth') { startTime = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime(); endTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); } 
+    else if (period === 'year') { startTime = new Date(now.getFullYear(), 0, 1).getTime(); chartType = 'monthly'; } 
+    else if (period === 'custom') { 
+        const smEl = document.getElementById('statsMonth'); const syEl = document.getElementById('statsYear');
+        const sm = smEl ? parseInt(smEl.value) : 0; const sy = syEl ? parseInt(syEl.value) : 2024;
+        startTime = new Date(sy, sm, 1).getTime(); endTime = new Date(sy, sm + 1, 1).getTime(); 
+    } 
+    else if (period === 'all') { chartType = 'monthly'; } 
+    else if (period === 'range') {
+        startTime = finalRangeStart || 0; endTime = finalRangeEnd || 4102444800000;
+        if ((endTime - startTime) > 60 * 24 * 60 * 60 * 1000) chartType = 'monthly';
+    }
+    return { startTime, endTime, showLineChart, chartType };
+}
+
+function openDateRangeModal() {
+    if (!rangeModal) rangeModal = new bootstrap.Modal(document.getElementById('dateRangeModal'));
+    try {
+        const res = JSON.parse(window.Android.querySql(DB_NAME, "SELECT MIN(timestamp) as minTs, MAX(timestamp) as maxTs FROM orders"));
+        if (res[0] && res[0].minTs) { dbMinTs = new Date(res[0].minTs).setHours(0,0,0,0); dbMaxTs = new Date(res[0].maxTs).setHours(23,59,59,999); } 
+        else { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
+    } catch(e) { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
+    rangeStart = null; rangeEnd = null; 
+    const btnApp = document.getElementById('btnApplyRange');
+    if (btnApp) btnApp.disabled = true; 
+    calCurrentDate = new Date(dbMaxTs); 
+    renderCalendar(); rangeModal.show();
+}
+function changeCalMonth(dir) { calCurrentDate.setMonth(calCurrentDate.getMonth() + dir); renderCalendar(); }
+function renderCalendar() {
+    const year = calCurrentDate.getFullYear(); const month = calCurrentDate.getMonth();
+    const cMy = document.getElementById('calMonthYear');
+    if (cMy) cMy.innerText = new Date(year, month).toLocaleString('ru-RU', {month: 'long', year: 'numeric'});
+    const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let offset = firstDay === 0 ? 6 : firstDay - 1; 
+
+    let html = ''; for(let i = 0; i < offset; i++) html += `<div class="cal-day disabled"></div>`;
+    for(let d = 1; d <= daysInMonth; d++) {
+        let tsStart = new Date(year, month, d).setHours(0,0,0,0); let tsEnd = new Date(year, month, d).setHours(23,59,59,999);
+        let isOut = (tsEnd < dbMinTs || tsStart > dbMaxTs); let cls = 'cal-day';
+        if (isOut) cls += ' disabled';
+        if (rangeStart && tsStart === rangeStart) cls += ' selected'; else if (rangeEnd && tsStart === rangeEnd) cls += ' selected'; else if (rangeStart && rangeEnd && tsStart > rangeStart && tsStart < rangeEnd) cls += ' in-range';
+        html += `<div class="${cls}" ${isOut ? '' : `onclick="clickCalDay(${tsStart})"`}>${d}</div>`;
+    }
+    const cDays = document.getElementById('calDays');
+    if(cDays) cDays.innerHTML = html;
+    let text = 'Выберите начальную дату';
+    if (rangeStart && !rangeEnd) text = `Начало: ${new Date(rangeStart).toLocaleDateString('ru-RU')}. Выберите конец.`;
+    if (rangeStart && rangeEnd) text = `${new Date(rangeStart).toLocaleDateString('ru-RU')} - ${new Date(rangeEnd).toLocaleDateString('ru-RU')}`;
+    const csText = document.getElementById('calSelectedText');
+    if (csText) csText.innerText = text;
+}
+function clickCalDay(ts) {
+    const btnApp = document.getElementById('btnApplyRange');
+    if (!rangeStart || (rangeStart && rangeEnd)) { 
+        rangeStart = ts; rangeEnd = null; 
+        if (btnApp) btnApp.disabled = true; 
+    } 
+    else if (ts < rangeStart) { rangeStart = ts; rangeEnd = null; } 
+    else { 
+        rangeEnd = ts; 
+        if (btnApp) btnApp.disabled = false; 
+    }
+    renderCalendar();
+}
+function applyDateRange() {
+    if (!rangeStart || !rangeEnd) return;
+    finalRangeStart = rangeStart; finalRangeEnd = rangeEnd + (23 * 60 * 60 * 1000) + (59 * 60 * 1000) + 59000; 
+    const startStr = new Date(finalRangeStart).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
+    const endStr = new Date(finalRangeEnd).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
+    const rBtnText = document.getElementById('rangeBtnText');
+    if (rBtnText) rBtnText.innerText = `${startStr} - ${endStr}`;
+    rangeModal.hide(); triggerCalculateStats();
+}
+function cancelDateRange() { 
+    if (!finalRangeStart || !finalRangeEnd) { 
+        const sPer = document.getElementById('statsPeriod');
+        if (sPer) sPer.value = 'month'; 
+        togglePeriodSelector(); 
+    } 
+}
+
+function triggerCalculateStats() {
+    const lo = document.getElementById('loadingOverlay');
+    if (lo) lo.classList.remove('d-none');
+    setTimeout(() => { 
+        calculateStats(); 
+        if (lo) lo.classList.add('d-none'); 
+    }, 50);
+}
+
+function calculateActiveAging() {
+    try {
+        const sMast = document.getElementById('statsMaster');
+        const masterSql = (sMast && sMast.value !== 'all') ? ` AND master_id=${sMast.value} ` : '';
+        const now = new Date(); const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); const weekTs = todayTs - 6 * 86400000;
+        const monthTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
         
-        customBox.classList.add('d-none');
-        if (rangeInfo) rangeInfo.classList.add('d-none');
-        
-        if (period === 'custom') {
-            customBox.classList.remove('d-none');
-            triggerCalculateStats();
-        } else if (period === 'range') {
-            if (rangeInfo) rangeInfo.classList.remove('d-none');
-            openDateRangeModal();
-        } else {
-            triggerCalculateStats();
-        }
-    }
-
-    // === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ КАЛЕНДАРЯ ===
-    let rangeModal = null; let calCurrentDate = new Date(); let rangeStart = null; let rangeEnd = null; let dbMinTs = null; let dbMaxTs = null; let finalRangeStart = null; let finalRangeEnd = null;
-
-    function getStatsDateRange() {
-        const period = document.getElementById('statsPeriod').value;
-        const now = new Date();
-        let startTime = 0, endTime = 4102444800000;
-        let showLineChart = true; let chartType = 'daily'; 
-
-        if (period === 'today') { startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); showLineChart = false; } 
-        else if (period === '24h') { startTime = now.getTime() - (24 * 60 * 60 * 1000); showLineChart = false; } 
-        else if (period === 'week') { const day = now.getDay() || 7; startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime(); } 
-        else if (period === 'month') { startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); } 
-        else if (period === 'lastMonth') { startTime = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime(); endTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); } 
-        else if (period === 'year') { startTime = new Date(now.getFullYear(), 0, 1).getTime(); chartType = 'monthly'; } 
-        else if (period === 'custom') { const sm = parseInt(document.getElementById('statsMonth').value); const sy = parseInt(document.getElementById('statsYear').value); startTime = new Date(sy, sm, 1).getTime(); endTime = new Date(sy, sm + 1, 1).getTime(); } 
-        else if (period === 'all') { chartType = 'monthly'; } 
-        else if (period === 'range') {
-            startTime = finalRangeStart || 0; endTime = finalRangeEnd || 4102444800000;
-            if ((endTime - startTime) > 60 * 24 * 60 * 60 * 1000) chartType = 'monthly';
-        }
-        return { startTime, endTime, showLineChart, chartType };
-    }
-
-    function openDateRangeModal() {
-        if (!rangeModal) rangeModal = new bootstrap.Modal(document.getElementById('dateRangeModal'));
-        try {
-            const res = JSON.parse(window.Android.querySql(DB_NAME, "SELECT MIN(timestamp) as minTs, MAX(timestamp) as maxTs FROM transactions"));
-            if (res[0] && res[0].minTs) { dbMinTs = new Date(res[0].minTs).setHours(0,0,0,0); dbMaxTs = new Date(res[0].maxTs).setHours(23,59,59,999); } 
-            else { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
-        } catch(e) { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
-        rangeStart = null; rangeEnd = null; document.getElementById('btnApplyRange').disabled = true; calCurrentDate = new Date(dbMaxTs); 
-        renderCalendar(); rangeModal.show();
-    }
-    
-    function changeCalMonth(dir) { calCurrentDate.setMonth(calCurrentDate.getMonth() + dir); renderCalendar(); }
-    
-    function renderCalendar() {
-        const year = calCurrentDate.getFullYear(); const month = calCurrentDate.getMonth();
-        document.getElementById('calMonthYear').innerText = new Date(year, month).toLocaleString('ru-RU', {month: 'long', year: 'numeric'});
-        const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
-        let offset = firstDay === 0 ? 6 : firstDay - 1; 
-
-        let html = ''; for(let i = 0; i < offset; i++) html += `<div class="cal-day disabled"></div>`;
-        for(let d = 1; d <= daysInMonth; d++) {
-            let tsStart = new Date(year, month, d).setHours(0,0,0,0); let tsEnd = new Date(year, month, d).setHours(23,59,59,999);
-            let isOut = (tsEnd < dbMinTs || tsStart > dbMaxTs); let cls = 'cal-day';
-            if (isOut) cls += ' disabled';
-            if (rangeStart && tsStart === rangeStart) cls += ' selected'; else if (rangeEnd && tsStart === rangeEnd) cls += ' selected'; else if (rangeStart && rangeEnd && tsStart > rangeStart && tsStart < rangeEnd) cls += ' in-range';
-            html += `<div class="${cls}" ${isOut ? '' : `onclick="clickCalDay(${tsStart})"`}>${d}</div>`;
-        }
-        document.getElementById('calDays').innerHTML = html;
-        let text = 'Выберите начальную дату';
-        if (rangeStart && !rangeEnd) text = `Начало: ${new Date(rangeStart).toLocaleDateString('ru-RU')}. Выберите конец.`;
-        if (rangeStart && rangeEnd) text = `${new Date(rangeStart).toLocaleDateString('ru-RU')} - ${new Date(rangeEnd).toLocaleDateString('ru-RU')}`;
-        document.getElementById('calSelectedText').innerText = text;
-    }
-    
-    function clickCalDay(ts) {
-        if (!rangeStart || (rangeStart && rangeEnd)) { rangeStart = ts; rangeEnd = null; document.getElementById('btnApplyRange').disabled = true; } 
-        else if (ts < rangeStart) { rangeStart = ts; rangeEnd = null; } 
-        else { rangeEnd = ts; document.getElementById('btnApplyRange').disabled = false; }
-        renderCalendar();
-    }
-    
-    function applyDateRange() {
-        if (!rangeStart || !rangeEnd) return;
-        finalRangeStart = rangeStart; finalRangeEnd = rangeEnd + (23 * 60 * 60 * 1000) + (59 * 60 * 1000) + 59000; 
-        const startStr = new Date(finalRangeStart).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
-        const endStr = new Date(finalRangeEnd).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
-        document.getElementById('rangeBtnText').innerText = `${startStr} - ${endStr}`;
-        rangeModal.hide(); triggerCalculateStats();
-    }
-    
-    function cancelDateRange() { 
-        if (!finalRangeStart || !finalRangeEnd) { document.getElementById('statsPeriod').value = 'month'; togglePeriodSelector(); } 
-    }
-
-    function triggerCalculateStats() {
-        document.getElementById('loadingOverlay').classList.remove('d-none');
-        setTimeout(() => {
-            calculateStats();
-            document.getElementById('loadingOverlay').classList.add('d-none');
-        }, 50);
-    }
-
-    function calculateStats() {
+        const sql = `SELECT timestamp FROM orders WHERE status IN ('active', 'scheduled') ${masterSql}`;
+        const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
         const range = getStatsDateRange();
+        let aTotal=0, aToday=0, aWeek=0, aMonth=0, aPeriod=0;
+        rows.forEach(r => {
+            aTotal++; if (r.timestamp >= todayTs) aToday++; if (r.timestamp >= weekTs) aWeek++; if (r.timestamp >= monthTs) aMonth++; if (r.timestamp >= range.startTime && r.timestamp < range.endTime) aPeriod++;
+        });
 
-        const sql = `SELECT * FROM transactions WHERE timestamp >= ${range.startTime} AND timestamp < ${range.endTime} AND category NOT IN ('Перевод', 'Корректировка') ORDER BY timestamp ASC`;
+        if(document.getElementById('agTotal')) document.getElementById('agTotal').innerText = aTotal.toLocaleString('ru-RU');
+        if(document.getElementById('agToday')) document.getElementById('agToday').innerText = aToday.toLocaleString('ru-RU');
+        if(document.getElementById('agWeek')) document.getElementById('agWeek').innerText = aWeek.toLocaleString('ru-RU');
+        if(document.getElementById('agMonth')) document.getElementById('agMonth').innerText = aMonth.toLocaleString('ru-RU');
+        if(document.getElementById('agPeriod')) document.getElementById('agPeriod').innerText = aPeriod.toLocaleString('ru-RU');
+    } catch(e) {}
+}
+
+function openCplModal() {
+    const range = getStatsDateRange();
+    const sql = `SELECT a.name, SUM(t.amount) as sum FROM transactions t JOIN accounts a ON t.account_id = a.id WHERE t.type='expense' AND a.is_target=1 AND t.timestamp >= ${range.startTime} AND t.timestamp < ${range.endTime} GROUP BY a.name ORDER BY sum DESC`;
+    let html = '';
+    try {
+        const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
+        rows.forEach(r => { html += `<div class="d-flex justify-content-between align-items-center mb-2 p-3 border rounded bg-light"><span class="fw-bold text-dark"><i class="fa-solid fa-bullseye text-danger me-2"></i>${r.name}</span><span class="fw-bold text-danger">${Number(r.sum).toLocaleString('ru-RU')} ₽</span></div>`; });
+        if(rows.length === 0) html = '<p class="text-muted text-center py-4">Нет списаний с целевых счетов за этот период.</p>';
+    } catch(e) { html = '<p class="text-muted text-center py-4">Нет данных или таблица счетов не настроена.</p>'; }
+    
+    const cplList = document.getElementById('cplDetailsList');
+    if (cplList) cplList.innerHTML = html;
+    new bootstrap.Modal(document.getElementById('cplModal')).show();
+}
+
+function calculateStats() {
+    const range = getStatsDateRange();
+    const sMast = document.getElementById('statsMaster');
+    const masterSql = (sMast && sMast.value !== 'all') ? ` AND master_id=${sMast.value} ` : '';
+    
+    calculateActiveAging();
+
+    const sql = `SELECT * FROM orders WHERE timestamp >= ${range.startTime} AND timestamp < ${range.endTime} ${masterSql} ORDER BY timestamp ASC`;
+    const adSql = `SELECT SUM(t.amount) as ad_total FROM transactions t JOIN accounts a ON t.account_id = a.id WHERE t.type='expense' AND a.is_target=1 AND t.timestamp >= ${range.startTime} AND t.timestamp < ${range.endTime}`;
+    
+    try {
+        const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
         
-        let totalIncome = 0; let totalExpense = 0;
-        let incomeCats = {}; let expenseCats = {};
-        let chartDataMap = {}; 
+        let adSpend = 0;
+        try { const adResult = JSON.parse(window.Android.querySql(DB_NAME, adSql)); adSpend = Number(adResult[0].ad_total || 0); } catch(e){}
+        
+        let countCompleted = 0, countWarranty = 0, countRefused = 0, countCancelled = 0, countActive = 0, countScheduled = 0;
+        let totalLeads = 0; 
+        let total = 0, parts = 0, net = 0;
+        let netCompleted = 0; // Для подсчета "чистого" среднего чека
+        let bU5 = 0, b5to8 = 0, b8to10 = 0, b10to20 = 0, bO20 = 0;
+        let chartDataMap = {};
 
-        try {
-            const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
-            
-            rows.forEach(r => {
-                const amt = parseFloat(r.amount);
-                
+        rows.forEach(r => {
+            if (r.status !== 'warranty') totalLeads++; // Считаем все лиды, кроме гарантии
+
+            // Считаем финансы со всех закрытых заказов (Ремонт, Отказы с деньгами, Гарантия)
+            if (r.status === 'completed' || r.status === 'warranty' || r.status === 'refused' || r.status === 'cancelled') {
+                const rTotal = parseFloat(r.total_sum || 0);
+                const rParts = parseFloat(r.parts_sum || 0);
+                const rNet = parseFloat(r.net_sum || 0);
+
+                total += rTotal;
+                parts += rParts;
+                net += rNet;
+
+                if (r.status === 'completed') {
+                    countCompleted++;
+                    netCompleted += rNet; // Собираем чистую прибыль только с ремонтов
+                    if (rTotal < 5000) bU5++; else if (rTotal < 8000) b5to8++; else if (rTotal < 10000) b8to10++; else if (rTotal < 20000) b10to20++; else bO20++;
+                } else if (r.status === 'warranty') {
+                    countWarranty++;
+                } else if (r.status === 'refused') {
+                    countRefused++;
+                } else if (r.status === 'cancelled') {
+                    countCancelled++;
+                }
+
+                // В график отправляем вообще все деньги за этот день
                 let d = new Date(r.timestamp);
                 let key = range.chartType === 'daily' ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-                if (!chartDataMap[key]) chartDataMap[key] = { period: key, income: 0, expense: 0 };
+                if (!chartDataMap[key]) chartDataMap[key] = { period: key, total: 0, parts: 0, net: 0 };
+                chartDataMap[key].total += rTotal; chartDataMap[key].parts += rParts; chartDataMap[key].net += rNet;
+            } else if (r.status === 'scheduled') {
+                countScheduled++;
+            } else {
+                countActive++;
+            }
+        });
 
-                if (r.type === 'income') {
-                    totalIncome += amt;
-                    incomeCats[r.category] = (incomeCats[r.category] || 0) + amt;
-                    chartDataMap[key].income += amt;
-                } else {
-                    totalExpense += amt;
-                    expenseCats[r.category] = (expenseCats[r.category] || 0) + amt;
-                    chartDataMap[key].expense += amt;
-                }
-            });
+        // БЛОК 1: Общая воронка
+        const countFailedTot = countRefused + countCancelled;
+        const perc1Comp = totalLeads > 0 ? Math.round((countCompleted / totalLeads) * 100) : 0;
+        const perc1Fail = totalLeads > 0 ? Math.round((countFailedTot / totalLeads) * 100) : 0;
+        const perc1Act = totalLeads > 0 ? (100 - perc1Comp - perc1Fail) : 0; 
+        
+        if(document.getElementById('pb1Comp')) {
+            document.getElementById('pb1Comp').style.width = perc1Comp + '%'; document.getElementById('pb1Comp').innerText = perc1Comp > 5 ? perc1Comp + '%' : '';
+            document.getElementById('pb1Fail').style.width = perc1Fail + '%'; document.getElementById('pb1Fail').innerText = perc1Fail > 5 ? perc1Fail + '%' : '';
+            document.getElementById('pb1Act').style.width = perc1Act + '%'; document.getElementById('pb1Act').innerText = perc1Act > 5 ? perc1Act + '%' : '';
+        }
 
-            document.getElementById('statIncome').innerText = Number(totalIncome).toLocaleString('ru-RU') + ' ₽';
-            document.getElementById('statExpense').innerText = Number(totalExpense).toLocaleString('ru-RU') + ' ₽';
-            const delta = totalIncome - totalExpense;
-            const elDelta = document.getElementById('statDelta');
-            elDelta.innerText = (delta > 0 ? '+' : '') + Number(delta).toLocaleString('ru-RU') + ' ₽';
-            elDelta.className = delta >= 0 ? "fs-4 fw-bold text-success" : "fs-4 fw-bold text-danger";
+        // БЛОК 2: Чистая конверсия (только закрытые лиды)
+        const closedLeads = countCompleted + countRefused + countCancelled;
+        const perc2Comp = closedLeads > 0 ? Math.round((countCompleted / closedLeads) * 100) : 0;
+        const perc2Ref = closedLeads > 0 ? Math.round((countRefused / closedLeads) * 100) : 0;
+        const perc2Canc = closedLeads > 0 ? (100 - perc2Comp - perc2Ref) : 0;
+        
+        if(document.getElementById('pb2Comp')) {
+            document.getElementById('pb2Comp').style.width = perc2Comp + '%'; document.getElementById('pb2Comp').innerText = perc2Comp > 5 ? perc2Comp + '%' : '';
+            document.getElementById('pb2Ref').style.width = perc2Ref + '%'; document.getElementById('pb2Ref').innerText = perc2Ref > 5 ? perc2Ref + '%' : '';
+            document.getElementById('pb2Canc').style.width = perc2Canc + '%'; document.getElementById('pb2Canc').innerText = perc2Canc > 5 ? perc2Canc + '%' : '';
+        }
 
-            renderDonutChart('income', incomeCats, ['#198754', '#20c997', '#146c43', '#28a745', '#218838']);
-            renderDonutChart('expense', expenseCats, ['#dc3545', '#ff6b6b', '#c82333', '#e4606d', '#bd2130']);
+        // БЛОК 3: Корзины (Только ремонты)
+        const bTot = countCompleted;
+        const revCard = document.getElementById('revenueBucketsCard');
+        if (revCard) {
+            if (bTot === 0) revCard.classList.add('d-none');
+            else {
+                revCard.classList.remove('d-none');
+                const pU5 = Math.round((bU5 / bTot) * 100); const p5to8 = Math.round((b5to8 / bTot) * 100);
+                const p8to10 = Math.round((b8to10 / bTot) * 100); const p10to20 = Math.round((b10to20 / bTot) * 100);
+                const pO20 = 100 - pU5 - p5to8 - p8to10 - p10to20;
+                const setupBucket = (id, perc) => { 
+                    const el = document.getElementById('pb3_' + id); const lg = document.getElementById('lg_' + id); 
+                    if(el) { el.style.width = perc + '%'; el.innerText = perc > 5 ? perc + '%' : ''; }
+                    if(lg) { if (perc > 0) lg.classList.remove('d-none'); else lg.classList.add('d-none'); }
+                };
+                setupBucket('u5', pU5); setupBucket('5to8', p5to8); setupBucket('8to10', p8to10); setupBucket('10to20', p10to20); setupBucket('o20', pO20);
+            }
+        }
 
-            const chartContainerNode = document.getElementById('financeChartContainer');
+        // РАСЧЕТЫ ПОКАЗАТЕЛЕЙ
+        const cpl = totalLeads > 0 ? (adSpend / totalLeads) : 0;
+        const cpa = countCompleted > 0 ? (adSpend / countCompleted) : 0;
+        
+        // Два средних чека!
+        const avgCompleted = countCompleted > 0 ? (netCompleted / countCompleted) : 0;
+        const avgTotal = closedLeads > 0 ? (net / closedLeads) : 0;
+
+        if(document.getElementById('statAllLeads')) document.getElementById('statAllLeads').innerText = totalLeads.toLocaleString('ru-RU');
+        if(document.getElementById('statCPL')) document.getElementById('statCPL').innerText = Math.round(cpl).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statCPA')) document.getElementById('statCPA').innerText = Math.round(cpa).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statTotal')) document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statParts')) document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statNet')) document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
+        
+        if(document.getElementById('statAvgCompleted')) document.getElementById('statAvgCompleted').innerText = Math.round(avgCompleted).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statAvgTotal')) document.getElementById('statAvgTotal').innerText = Math.round(avgTotal).toLocaleString('ru-RU') + ' ₽';
+
+        // Обновление вкладок аналитики
+        if(document.getElementById('sc_all')) document.getElementById('sc_all').innerText = rows.length; 
+        if(document.getElementById('sc_scheduled')) document.getElementById('sc_scheduled').innerText = countScheduled; 
+        if(document.getElementById('sc_completed')) document.getElementById('sc_completed').innerText = countCompleted; 
+        if(document.getElementById('sc_warranty')) document.getElementById('sc_warranty').innerText = countWarranty; 
+        if(document.getElementById('sc_refused')) document.getElementById('sc_refused').innerText = countRefused; 
+        if(document.getElementById('sc_cancelled')) document.getElementById('sc_cancelled').innerText = countCancelled; 
+        if(document.getElementById('sc_active')) document.getElementById('sc_active').innerText = countActive;
+
+        const chartContainerNode = document.getElementById('crmChartContainer');
+        if (chartContainerNode) {
             if (!range.showLineChart || Object.keys(chartDataMap).length === 0) {
                 chartContainerNode.classList.add('d-none');
             } else {
-                chartContainerNode.classList.remove('d-none');
+                chartContainerNode.classList.remove('d-none'); 
                 let chartArray = Object.values(chartDataMap);
-                document.getElementById('chartTitle').innerText = range.chartType === 'daily' ? 'Динамика по дням' : 'Динамика по месяцам';
-                document.getElementById('financeChart').innerHTML = ''; 
+                if (document.getElementById('chartTitle')) document.getElementById('chartTitle').innerText = range.chartType === 'daily' ? 'Динамика прибыли по дням' : 'Динамика прибыли по месяцам';
+                if (document.getElementById('crmChart')) document.getElementById('crmChart').innerHTML = ''; 
                 
                 if (window.Morris) {
-                    new Morris.Bar({
-                        element: 'financeChart', data: chartArray, xkey: 'period', ykeys: ['income', 'expense'], labels: ['Доход', 'Расход'],
-                        barColors: ['#198754', '#dc3545'], hideHover: 'auto', resize: true
+                    new Morris.Line({
+                        element: 'crmChart', data: chartArray, xkey: 'period', ykeys: ['total', 'net', 'parts'], labels: ['Выручка', 'Чистая', 'Расход'], lineColors: ['#0d6efd', '#198754', '#dc3545'], hideHover: 'auto', resize: true, parseTime: false, 
+                        hoverCallback: function (index, options, content, row) { return `<div class="p-2 fw-bold bg-white shadow-sm border rounded" style="z-index:1000"><div class="mb-1 text-dark border-bottom pb-1">${row.period}</div><div style="color: #0d6efd">Выручка: ${Number(row.total).toLocaleString('ru-RU')} ₽</div><div style="color: #198754">Чистая: ${Number(row.net).toLocaleString('ru-RU')} ₽</div><div style="color: #dc3545">Расход: ${Number(row.parts).toLocaleString('ru-RU')} ₽</div></div>`; }
                     });
                 }
             }
-            
-            const sqlAll = `SELECT * FROM transactions WHERE timestamp >= ${range.startTime} AND timestamp < ${range.endTime} ORDER BY timestamp DESC LIMIT 100`;
-            const rowsAll = JSON.parse(window.Android.querySql(DB_NAME, sqlAll));
-            document.getElementById('statsTransactionsList').innerHTML = '';
-            renderTxChunk(rowsAll, 'statsTransactionsList', true);
-
-        } catch(e) { console.error("Ошибка аналитики Финансов:", e); }
-    }
-
-    function renderDonutChart(prefix, catsObj, colorArray) {
-        const containerNode = document.getElementById(prefix + 'StatsContainer');
-        const chartNode = document.getElementById(prefix + 'DonutChart');
-        const legendNode = document.getElementById('categoryStats' + (prefix === 'income' ? 'Income' : 'Expense') + 'List');
+        }
         
-        chartNode.innerHTML = ''; legendNode.innerHTML = '';
+        loadStatsOrders(true);
+    } catch (e) { console.error("Ошибка аналитики:", e); }
+}
 
-        const keys = Object.keys(catsObj).sort((a, b) => catsObj[b] - catsObj[a]);
-        if (keys.length === 0) { containerNode.classList.add('d-none'); return; }
-        containerNode.classList.remove('d-none');
+function generateTestData() {
+    if (!confirm("Добавить 10 000 случайных заказов?")) return;
+    const btn = document.getElementById('btnGenerate'); 
+    if(btn) { btn.disabled = true; btn.innerText = "Идет генерация..."; }
+    const names = ["Александр", "Елена", "Максим", "Ольга", "Иван", "Анна", "Сергей", "Наталья"];
+    let totalInserted = 0;
+    
+    function insertBatch() {
+        let sql = "INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp, warranty_period) VALUES ";
+        let values = [];
+        for (let i = 0; i < 500; i++) {
+            const id = Date.now() + totalInserted + i;
+            const street = (typeof SARATOV_STREETS !== 'undefined' && SARATOV_STREETS.length > 0) ? SARATOV_STREETS[Math.floor(Math.random() * SARATOV_STREETS.length)] : "ул. Тестовая";
+            const address = street + ", д. " + Math.floor(Math.random() * 150 + 1);
+            const name = names[Math.floor(Math.random() * names.length)];
+            const phone = "89" + Math.floor(100000000 + Math.random() * 900000000);
+            
+            const total = Math.floor(Math.random() * 250) * 100 + 1000; const parts = Math.floor(Math.random() * 15) * 100;
+            const masterId = allMasters.length ? allMasters[Math.floor(Math.random() * allMasters.length)].id : 0;
+            
+            const rand = Math.random(); let status = 'completed';
+            if (rand < 0.15) status = 'active'; else if (rand < 0.25) status = 'refused'; else if (rand < 0.35) status = 'cancelled'; else if (rand < 0.45) status = 'scheduled'; else if (rand < 0.5) status = 'warranty';
+            
+            const ts = Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000); 
+            const closedTs = (status !== 'active' && status !== 'scheduled') ? ts + (Math.floor(Math.random() * 5 * 86400000)) : 'NULL';
+            const schedTs = status === 'scheduled' ? ts + 86400000 : 'NULL';
 
-        let donutData = []; let colors = []; let legendHtml = '';
-        keys.forEach((cat, index) => {
-            const color = colorArray[index % colorArray.length];
-            const val = catsObj[cat];
-            donutData.push({ label: cat, value: val }); colors.push(color);
-            legendHtml += `<div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-3 shadow-sm border-0 mb-1"><div class="d-flex align-items-center overflow-hidden pe-2"><div style="width: 14px; height: 14px; background-color: ${color}; border-radius: 50%; flex-shrink: 0;" class="me-3 shadow-sm"></div><span class="fw-bold fs-6 text-truncate">${cat}</span></div><span class="fw-bold fs-6 flex-shrink-0">${Number(val).toLocaleString('ru-RU')} ₽</span></div>`;
-        });
-
-        if (window.Morris) new Morris.Donut({ element: chartNode.id, data: donutData, colors: colors, resize: true, formatter: function (y) { return Number(y).toLocaleString('ru-RU') + ' ₽'; } });
-        legendNode.innerHTML = legendHtml;
+            values.push(`(${id}, '${address}', '${name}', '${phone}', 'Тестовый', ${total}, ${parts}, ${total-parts}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs}, '12 мес')`);
+        }
+        window.Android.executeSql(DB_NAME, sql + values.join(", "));
+        totalInserted += 500;
+        
+        if (totalInserted < 10000) {
+            if(btn) btn.innerText = `Добавлено: ${totalInserted} / 10000`; 
+            setTimeout(insertBatch, 20);
+        } else {
+            if(btn) { btn.disabled = false; btn.innerText = "Сгенерировать 10 000 заказов"; }
+            updateGlobalCounters(); loadOrders(true);
+            const statsScrn = document.getElementById('statsScreen');
+            if (statsScrn && !statsScrn.classList.contains('d-none')) triggerCalculateStats();
+            alert("Успешно добавлено!");
+        }
     }
+    insertBatch();
+}
 
-    window.addEventListener('DOMContentLoaded', initDb);
+function clearDatabase() {
+    if (!confirm("Удалить тестовые заказы?")) return;
+    window.Android.executeSql(DB_NAME, "DELETE FROM orders WHERE description = 'Тестовый'");
+    updateGlobalCounters(); loadOrders(true);
+    const statsScrn = document.getElementById('statsScreen');
+    if (statsScrn && !statsScrn.classList.contains('d-none')) triggerCalculateStats();
+    alert("Тестовые данные успешно удалены!");
+}
+
+window.addEventListener('DOMContentLoaded', initDb);
 </script>
 </body>
 </html>
