@@ -15,6 +15,8 @@
         .order-card { border-radius: 16px; border: none; border-left: 5px solid #ffc107; transition: 0.2s; cursor: pointer; }
         .order-card.scheduled { border-left-color: #0d6efd; opacity: 1; }
         .order-card.completed { border-left-color: #198754; opacity: 0.9; }
+        .order-card.diagnostic { border-left-color: #0dcaf0; opacity: 0.9; }
+        .order-card.warranty { border-left-color: #6f42c1; opacity: 0.9; }
         .order-card.refused { border-left-color: #dc3545; opacity: 0.8; }
         .order-card.cancelled { border-left-color: #6c757d; opacity: 0.7; }
         
@@ -77,7 +79,9 @@
         <ul class="nav horizontal-tabs mb-3 px-1" id="mainTabs">
             <li class="nav-item"><a class="nav-link active shadow-sm" href="#" id="tab_scheduled" onclick="setMainFilter('scheduled'); return false;">Ожидают <span class="badge text-primary" id="mc_scheduled">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_active" onclick="setMainFilter('active'); return false;">В работе <span class="badge" id="mc_active">0</span></a></li>
-            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_completed" onclick="setMainFilter('completed'); return false;">Выполнены <span class="badge" id="mc_completed">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_completed" onclick="setMainFilter('completed'); return false;">Ремонт <span class="badge" id="mc_completed">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_diagnostic" onclick="setMainFilter('diagnostic'); return false;">Выезды <span class="badge" id="mc_diagnostic">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_warranty" onclick="setMainFilter('warranty'); return false;">Гарантия <span class="badge" id="mc_warranty">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_refused" onclick="setMainFilter('refused'); return false;">Отказы <span class="badge" id="mc_refused">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_cancelled" onclick="setMainFilter('cancelled'); return false;">Отмены <span class="badge" id="mc_cancelled">0</span></a></li>
         </ul>
@@ -134,6 +138,11 @@
                     <a href="#" id="detPhoneBtn" class="btn btn-outline-primary btn-sm mt-1 rounded-pill fw-bold">
                         <i class="fa-solid fa-phone me-2"></i><span id="detPhone"></span>
                     </a>
+                </div>
+
+                <div class="mb-3">
+                    <small class="text-muted d-block">Срок гарантии</small>
+                    <span id="detWarranty" class="fw-bold"></span>
                 </div>
 
                 <div class="mb-3 pb-3 border-bottom">
@@ -223,7 +232,7 @@
             <div class="col-12">
                 <div class="card border-0 shadow-sm bg-success text-white" style="background: linear-gradient(135deg, #198754 0%, #146c43 100%);">
                     <div class="card-body p-4">
-                        <small class="opacity-75 d-block mb-1">Чистая прибыль (Выполненные)</small>
+                        <small class="opacity-75 d-block mb-1">Чистая прибыль (Ремонт, Диагн., Гарантия)</small>
                         <h2 class="fw-bold mb-0" id="statNet">0 ₽</h2>
                     </div>
                 </div>
@@ -284,32 +293,16 @@
                     <div id="pb1Act" class="progress-bar bg-warning text-dark fw-bold" style="width: 0%">0%</div>
                 </div>
                 <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem; font-weight: 700;">
-                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Успех</span>
+                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Успех (Ремонт+Выезд)</span>
                     <span class="text-danger"><i class="fa-solid fa-circle me-1"></i>Отклонено</span>
                     <span class="text-warning"><i class="fa-solid fa-circle me-1"></i>В работе/Ожидают</span>
                 </div>
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm mt-3">
-            <div class="card-body p-3">
-                <h6 class="text-muted fw-bold mb-2">Чистая конверсия (только закрытые)</h6>
-                <div class="progress" style="height: 25px; border-radius: 12px;">
-                    <div id="pb2Comp" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
-                    <div id="pb2Ref" class="progress-bar" style="width: 0%; background-color: #dc3545; font-weight: bold;">0%</div>
-                    <div id="pb2Canc" class="progress-bar" style="width: 0%; background-color: #6c757d; font-weight: bold;">0%</div>
-                </div>
-                <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem; font-weight: 700;">
-                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Выполнены</span>
-                    <span style="color: #dc3545;"><i class="fa-solid fa-circle me-1"></i>Отказ</span>
-                    <span style="color: #6c757d;"><i class="fa-solid fa-circle me-1"></i>Отмена</span>
-                </div>
-            </div>
-        </div>
-
         <div class="card border-0 shadow-sm mt-3" id="revenueBucketsCard">
             <div class="card-body p-3">
-                <h6 class="text-muted fw-bold mb-2">Структура чеков (Выполненные)</h6>
+                <h6 class="text-muted fw-bold mb-2">Структура чеков (Только Ремонты)</h6>
                 <div class="progress" style="height: 25px; border-radius: 12px;">
                     <div id="pb3_u5" class="progress-bar bg-danger fw-bold" style="width: 0%">0%</div>
                     <div id="pb3_5to8" class="progress-bar bg-secondary fw-bold" style="width: 0%">0%</div>
@@ -329,7 +322,7 @@
 
         <div id="crmChartContainer" class="card border-0 shadow-sm mb-4 mt-4 chart-container-card d-none">
             <div class="card-body p-2 pt-3">
-                <h6 class="text-muted fw-bold mb-3 px-2 text-center" id="chartTitle">Динамика заказов</h6>
+                <h6 class="text-muted fw-bold mb-3 px-2 text-center" id="chartTitle">Динамика прибыли</h6>
                 <div id="crmChart" style="height: 250px;"></div>
             </div>
         </div>
@@ -353,7 +346,7 @@
                 <div class="card-body p-3 d-flex justify-content-between align-items-center">
                     <div>
                         <span class="text-muted fw-bold d-block">Средний чек (чист):</span>
-                        <small class="text-muted" style="font-size:0.65rem">(Выполненные + Отказы)</small>
+                        <small class="text-muted" style="font-size:0.65rem">(Только Полноценные Ремонты)</small>
                     </div>
                     <span class="fs-4 fw-bold text-primary" id="statAvg">0 ₽</span>
                 </div>
@@ -364,10 +357,10 @@
         <ul class="nav horizontal-tabs mb-3 px-1" id="statsTabs">
             <li class="nav-item"><a class="nav-link active shadow-sm" href="#" id="st_all" onclick="setStatsFilter('all'); return false;">Все <span class="badge" id="sc_all">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_scheduled" onclick="setStatsFilter('scheduled'); return false;">Ожидают <span class="badge text-primary" id="sc_scheduled">0</span></a></li>
-            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_completed" onclick="setStatsFilter('completed'); return false;">Выполнены <span class="badge" id="sc_completed">0</span></a></li>
-            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_refused" onclick="setStatsFilter('refused'); return false;">Отказ <span class="badge" id="sc_refused">0</span></a></li>
-            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_cancelled" onclick="setStatsFilter('cancelled'); return false;">Отмена <span class="badge" id="sc_cancelled">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_active" onclick="setStatsFilter('active'); return false;">В работе <span class="badge" id="sc_active">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_completed" onclick="setStatsFilter('completed'); return false;">Ремонт <span class="badge" id="sc_completed">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_diagnostic" onclick="setStatsFilter('diagnostic'); return false;">Выезды <span class="badge" id="sc_diagnostic">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_warranty" onclick="setStatsFilter('warranty'); return false;">Гарантия <span class="badge" id="sc_warranty">0</span></a></li>
         </ul>
 
         <div id="statsOrdersList" class="d-flex flex-column gap-3 mb-5"></div>
@@ -407,9 +400,15 @@
                     <input type="datetime-local" id="orderScheduledTime" class="form-control fw-bold text-primary">
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label text-muted small mb-1">Мастер</label>
-                    <select id="orderMaster" class="form-select"></select>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Мастер</label>
+                        <select id="orderMaster" class="form-select"></select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-muted small mb-1">Срок гарантии</label>
+                        <input type="text" id="orderWarranty" class="form-control" placeholder="Например: 6 мес.">
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -438,7 +437,9 @@
                     <select id="orderStatus" class="form-select form-select-lg fw-bold">
                         <option value="scheduled">📅 Ожидает (Новая заявка)</option>
                         <option value="active">⏳ В работе (У мастера)</option>
-                        <option value="completed">✅ Выполнен успешно</option>
+                        <option value="completed">✅ Выполнен успешно (Ремонт)</option>
+                        <option value="diagnostic">🔍 Платный выезд / Диагностика</option>
+                        <option value="warranty">🛡️ Гарантийный выезд</option>
                         <option value="refused">❌ Отказ (не устроила цена и т.д.)</option>
                         <option value="cancelled">🚫 Отмена (до приезда)</option>
                     </select>
@@ -530,7 +531,7 @@ const orderModal = new bootstrap.Modal(document.getElementById('orderModal'));
 let allOrders = [];
 let allMasters = [];
 let currentViewedOrder = null;
-let currentMainFilter = 'scheduled'; // По умолчанию открываем новые заявки
+let currentMainFilter = 'scheduled'; 
 let currentOffset = 0;        
 const LOAD_LIMIT = 20;        
 let isLoading = false;        
@@ -576,7 +577,7 @@ function initDb() {
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY, address TEXT, client_name TEXT, phone TEXT,
             description TEXT, total_sum REAL, parts_sum REAL, net_sum REAL,
-            timestamp INTEGER, status TEXT DEFAULT 'active', closed_timestamp INTEGER, master_id INTEGER DEFAULT 0, scheduled_timestamp INTEGER
+            timestamp INTEGER, status TEXT DEFAULT 'active', closed_timestamp INTEGER, master_id INTEGER DEFAULT 0, scheduled_timestamp INTEGER, warranty_period TEXT DEFAULT ''
         )
     `);
     
@@ -587,18 +588,14 @@ function initDb() {
         )
     `);
 
-    window.Android.executeSql(DB_NAME, `
-        CREATE TABLE IF NOT EXISTS accounts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type TEXT, is_target INTEGER DEFAULT 0
-        )
-    `);
-
+    window.Android.executeSql(DB_NAME, `CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, type TEXT, is_target INTEGER DEFAULT 0)`);
     window.Android.executeSql(DB_NAME, `CREATE TABLE IF NOT EXISTS masters (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)`);
 
     try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'active'`); window.Android.executeSql(DB_NAME, `UPDATE orders SET status = 'completed' WHERE is_completed = 1 AND status = 'active'`); } catch(e) {}
     try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN closed_timestamp INTEGER`); window.Android.executeSql(DB_NAME, `UPDATE orders SET closed_timestamp = timestamp + 86400000 WHERE status NOT IN ('active', 'scheduled') AND closed_timestamp IS NULL`); } catch(e) {}
     try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN master_id INTEGER DEFAULT 0`); } catch(e) {}
     try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN scheduled_timestamp INTEGER`); } catch(e) {}
+    try { window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN warranty_period TEXT DEFAULT ''`); } catch(e) {}
     
     loadMasters();
     updateGlobalCounters();
@@ -640,10 +637,12 @@ function deleteMaster(id) {
 function updateGlobalCounters() {
     try {
         const res = JSON.parse(window.Android.querySql(DB_NAME, "SELECT status, COUNT(*) as c FROM orders GROUP BY status"));
-        let counts = { active: 0, completed: 0, refused: 0, cancelled: 0, scheduled: 0 };
+        let counts = { active: 0, completed: 0, diagnostic: 0, warranty: 0, refused: 0, cancelled: 0, scheduled: 0 };
         res.forEach(r => { counts[r.status] = r.c; });
         document.getElementById('mc_active').innerText = counts.active;
         document.getElementById('mc_completed').innerText = counts.completed;
+        document.getElementById('mc_diagnostic').innerText = counts.diagnostic;
+        document.getElementById('mc_warranty').innerText = counts.warranty;
         document.getElementById('mc_refused').innerText = counts.refused;
         document.getElementById('mc_cancelled').innerText = counts.cancelled;
         document.getElementById('mc_scheduled').innerText = counts.scheduled;
@@ -658,7 +657,7 @@ function handleSearch(query) {
 function setMainFilter(filterType) {
     if (currentMainFilter === filterType) return;
     currentMainFilter = filterType;
-    ['scheduled', 'active', 'completed', 'refused', 'cancelled'].forEach(f => {
+    ['scheduled', 'active', 'completed', 'diagnostic', 'warranty', 'refused', 'cancelled'].forEach(f => {
         const tab = document.getElementById('tab_' + f);
         if (f === filterType) tab.classList.add('active', 'shadow-sm'); else tab.classList.remove('active', 'shadow-sm');
     });
@@ -669,7 +668,7 @@ function loadOrders(reset = false) {
     if (reset) {
         currentOffset = 0; hasMoreData = true; allOrders = []; document.getElementById('ordersList').innerHTML = ''; updateGlobalCounters();
         try {
-            const sumResult = JSON.parse(window.Android.querySql(DB_NAME, "SELECT SUM(net_sum) as total FROM orders WHERE status='completed'"));
+            const sumResult = JSON.parse(window.Android.querySql(DB_NAME, "SELECT SUM(net_sum) as total FROM orders WHERE status IN ('completed', 'diagnostic', 'warranty')"));
             document.getElementById('totalNetProfit').innerText = Number(sumResult[0].total || 0).toLocaleString('ru-RU') + ' ₽';
         } catch (e) {}
     }
@@ -679,9 +678,7 @@ function loadOrders(reset = false) {
     let sqlCondition = `status='${currentMainFilter}'`;
     if (searchQuery) sqlCondition += ` AND (LOWER(address) LIKE '%${searchQuery}%' OR phone LIKE '%${searchQuery}%' OR LOWER(client_name) LIKE '%${searchQuery}%')`;
     
-    // Ожидающие сортируем по времени визита (ближайшие наверху), остальные - по созданию
     let orderRule = currentMainFilter === 'scheduled' ? 'ORDER BY scheduled_timestamp ASC' : 'ORDER BY timestamp DESC';
-    
     const sql = `SELECT * FROM orders WHERE ${sqlCondition} ${orderRule} LIMIT ${LOAD_LIMIT} OFFSET ${currentOffset}`;
     
     try {
@@ -697,8 +694,9 @@ function loadOrders(reset = false) {
 function setStatsFilter(filterType) {
     if (statsCurrentFilter === filterType) return;
     statsCurrentFilter = filterType;
-    ['all', 'scheduled', 'completed', 'refused', 'cancelled', 'active'].forEach(f => {
+    ['all', 'scheduled', 'completed', 'diagnostic', 'warranty', 'refused', 'cancelled', 'active'].forEach(f => {
         const tab = document.getElementById('st_' + f);
+        if(!tab) return;
         if (f === filterType) tab.classList.add('active'); else tab.classList.remove('active');
     });
     loadStatsOrders(true);
@@ -736,13 +734,12 @@ function renderOrdersChunk(ordersChunk, containerId, isReset) {
         
         if (o.status === 'scheduled') {
             statusBadge = '<span class="badge bg-primary">Ожидает</span>'; cardColor = 'scheduled';
-            if (o.scheduled_timestamp) {
-                dateHtml = `<span class="text-primary fw-bold"><i class="fa-regular fa-clock me-1"></i>` + new Date(o.scheduled_timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + `</span>`;
-            } else {
-                dateHtml = `<span class="text-primary fw-bold">Без времени</span>`;
-            }
+            if (o.scheduled_timestamp) dateHtml = `<span class="text-primary fw-bold"><i class="fa-regular fa-clock me-1"></i>` + new Date(o.scheduled_timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + `</span>`;
+            else dateHtml = `<span class="text-primary fw-bold">Без времени</span>`;
         }
-        else if (o.status === 'completed') { statusBadge = '<span class="badge bg-success">Выполнен</span>'; cardColor = 'completed'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
+        else if (o.status === 'completed') { statusBadge = '<span class="badge bg-success">Ремонт</span>'; cardColor = 'completed'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
+        else if (o.status === 'diagnostic') { statusBadge = '<span class="badge bg-info text-dark">Платный выезд</span>'; cardColor = 'diagnostic'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
+        else if (o.status === 'warranty') { statusBadge = '<span class="badge bg-purple" style="background-color: #6f42c1;">Гарантия</span>'; cardColor = 'warranty'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
         else if (o.status === 'refused') { statusBadge = '<span class="badge bg-danger">Отказ</span>'; cardColor = 'refused'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
         else if (o.status === 'cancelled') { statusBadge = '<span class="badge bg-secondary">Отмена</span>'; cardColor = 'cancelled'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
         else { statusBadge = '<span class="badge bg-warning text-dark">В работе</span>'; cardColor = ''; }
@@ -799,6 +796,7 @@ function openDetailScreen(orderId) {
     document.getElementById('detTotal').innerText = Number(o.total_sum || 0).toLocaleString('ru-RU') + ' ₽';
     document.getElementById('detParts').innerText = Number(o.parts_sum || 0).toLocaleString('ru-RU') + ' ₽';
     document.getElementById('detNet').innerText = Number(o.net_sum || 0).toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('detWarranty').innerText = o.warranty_period ? o.warranty_period : 'Нет';
     
     let masterName = 'Не выбран';
     if(o.master_id && allMasters.length) {
@@ -816,6 +814,8 @@ function openDetailScreen(orderId) {
     
     let statusHtml = '';
     if (o.status === 'completed') statusHtml = '<span class="badge bg-success">Выполнен</span>';
+    else if (o.status === 'diagnostic') statusHtml = '<span class="badge bg-info text-dark">Платный выезд</span>';
+    else if (o.status === 'warranty') statusHtml = '<span class="badge text-white" style="background-color: #6f42c1;">Гарантия</span>';
     else if (o.status === 'refused') statusHtml = '<span class="badge bg-danger">Отказ</span>';
     else if (o.status === 'cancelled') statusHtml = '<span class="badge bg-secondary">Отмена</span>';
     else if (o.status === 'scheduled') statusHtml = '<span class="badge bg-primary">Ожидает визита</span>';
@@ -836,7 +836,8 @@ function showOrderModal() {
     document.getElementById('orderClient').value = ''; document.getElementById('orderPhone').value = '';
     document.getElementById('orderDesc').value = ''; document.getElementById('orderTotal').value = '';
     document.getElementById('orderParts').value = ''; document.getElementById('orderNet').innerText = '0 ₽';
-    document.getElementById('orderStatus').value = 'scheduled'; // По умолчанию новая заявка
+    document.getElementById('orderWarranty').value = '';
+    document.getElementById('orderStatus').value = 'scheduled'; 
     document.getElementById('orderScheduledTime').value = '';
     
     const masterSelect = document.getElementById('orderMaster');
@@ -854,6 +855,7 @@ function openEditModal() {
         document.getElementById('orderDesc').value = o.description || ''; document.getElementById('orderTotal').value = o.total_sum || '';
         document.getElementById('orderParts').value = o.parts_sum || ''; document.getElementById('orderStatus').value = o.status || 'scheduled';
         document.getElementById('orderMaster').value = o.master_id || 0;
+        document.getElementById('orderWarranty').value = o.warranty_period || '';
         
         if (o.scheduled_timestamp) {
             const d = new Date(o.scheduled_timestamp);
@@ -892,6 +894,7 @@ function saveOrder() {
     const idInput = document.getElementById('orderId').value; const orderId = idInput ? parseInt(idInput) : Date.now();
     const address = document.getElementById('orderAddress').value.replace(/'/g, "''"); const client = document.getElementById('orderClient').value.replace(/'/g, "''");
     const phone = document.getElementById('orderPhone').value.replace(/'/g, "''"); const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
+    const warranty = document.getElementById('orderWarranty').value.replace(/'/g, "''");
     const total = parseFloat(document.getElementById('orderTotal').value) || 0; const parts = parseFloat(document.getElementById('orderParts').value) || 0;
     const net = total - parts; const status = document.getElementById('orderStatus').value;
     const masterId = parseInt(document.getElementById('orderMaster').value) || 0;
@@ -908,14 +911,16 @@ function saveOrder() {
     const ts = idInput ? (currentViewedOrder ? currentViewedOrder.timestamp : Date.now()) : orderId;
 
     let sql = idInput 
-        ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, status='${status}', closed_timestamp=${closedTs}, master_id=${masterId}, scheduled_timestamp=${schedTs} WHERE id=${orderId}`
-        : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs})`;
+        ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, status='${status}', closed_timestamp=${closedTs}, master_id=${masterId}, scheduled_timestamp=${schedTs}, warranty_period='${warranty}' WHERE id=${orderId}`
+        : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp, warranty_period) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs}, '${warranty}')`;
     
     window.Android.executeSql(DB_NAME, sql);
     window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
 
-    if (status === 'completed') {
-        if (total > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${total}, 'Услуги ремонта', '[CRM-${orderId}] ${address}', ${Date.now()}, 'crm')`);
+    // В финансы отправляем только завершенные дела (Ремонт, Диагностика, Гарантия - если там были деньги)
+    if (status === 'completed' || status === 'diagnostic' || status === 'warranty') {
+        let noteCategory = status === 'warranty' ? 'Гарантийный выезд' : (status === 'diagnostic' ? 'Платный выезд' : 'Услуги ремонта');
+        if (total > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${total}, '${noteCategory}', '[CRM-${orderId}] ${address}', ${Date.now()}, 'crm')`);
         if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
     }
 
@@ -1063,7 +1068,6 @@ function calculateActiveAging() {
         const now = new Date(); const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); const weekTs = todayTs - 6 * 86400000;
         const monthTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
         
-        // Считаем и В работе, и Ожидают
         const sql = `SELECT timestamp FROM orders WHERE status IN ('active', 'scheduled') ${masterSql}`;
         const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
         const range = getStatsDateRange();
@@ -1109,27 +1113,37 @@ function calculateStats() {
         let adSpend = 0;
         try { const adResult = JSON.parse(window.Android.querySql(DB_NAME, adSql)); adSpend = Number(adResult[0].ad_total || 0); } catch(e){}
         
-        let countCompleted = 0, countRefused = 0, countCancelled = 0, countActive = 0, countScheduled = 0, totalLeads = rows.length;
+        let countCompleted = 0, countDiagnostic = 0, countWarranty = 0, countRefused = 0, countCancelled = 0, countActive = 0, countScheduled = 0;
+        let totalLeads = 0; // Исключаем гарантию из лидов
         let total = 0, parts = 0, net = 0;
         let bU5 = 0, b5to8 = 0, b8to10 = 0, b10to20 = 0, bO20 = 0;
         let chartDataMap = {};
 
         rows.forEach(r => {
-            if (r.status === 'completed') {
-                countCompleted++;
+            if (r.status !== 'warranty') totalLeads++; // Считаем лиды
+
+            if (r.status === 'completed' || r.status === 'diagnostic' || r.status === 'warranty') {
+                if (r.status === 'completed') countCompleted++;
+                if (r.status === 'diagnostic') countDiagnostic++;
+                if (r.status === 'warranty') countWarranty++;
+
                 total += parseFloat(r.total_sum || 0);
                 parts += parseFloat(r.parts_sum || 0);
                 net += parseFloat(r.net_sum || 0);
                 
-                let rTot = parseFloat(r.total_sum || 0);
-                if (rTot < 5000) bU5++; else if (rTot < 8000) b5to8++; else if (rTot < 10000) b8to10++; else if (rTot < 20000) b10to20++; else bO20++;
-                
+                // Корзины чеков ТОЛЬКО для полноценных ремонтов
+                if (r.status === 'completed') {
+                    let rTot = parseFloat(r.total_sum || 0);
+                    if (rTot < 5000) bU5++; else if (rTot < 8000) b5to8++; else if (rTot < 10000) b8to10++; else if (rTot < 20000) b10to20++; else bO20++;
+                }
+
                 let d = new Date(r.timestamp);
                 let key = range.chartType === 'daily' ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
                 if (!chartDataMap[key]) chartDataMap[key] = { period: key, total: 0, parts: 0, net: 0 };
                 chartDataMap[key].total += parseFloat(r.total_sum || 0); chartDataMap[key].parts += parseFloat(r.parts_sum || 0); chartDataMap[key].net += parseFloat(r.net_sum || 0);
             } else if (r.status === 'refused') {
                 countRefused++;
+                // Для отказов тоже можем учитывать траты/чистую, если они есть (например, минус на бензин)
                 net += parseFloat(r.net_sum || 0); 
             } else if (r.status === 'cancelled') {
                 countCancelled++;
@@ -1140,26 +1154,28 @@ function calculateStats() {
             }
         });
 
-        // БЛОК 1: Общая воронка (Считаем все: Успех / Отказы+Отмены / В работе+Ожидают)
+        // БЛОК 1: Общая воронка (Без гарантии, так как это не воронка лида)
         const countFailedTot = countRefused + countCancelled;
         const countPendingTot = countActive + countScheduled;
-        const perc1Comp = totalLeads > 0 ? Math.round((countCompleted / totalLeads) * 100) : 0;
+        const countSuccessTot = countCompleted + countDiagnostic;
+
+        const perc1Comp = totalLeads > 0 ? Math.round((countSuccessTot / totalLeads) * 100) : 0;
         const perc1Fail = totalLeads > 0 ? Math.round((countFailedTot / totalLeads) * 100) : 0;
         const perc1Act = totalLeads > 0 ? (100 - perc1Comp - perc1Fail) : 0; 
         document.getElementById('pb1Comp').style.width = perc1Comp + '%'; document.getElementById('pb1Comp').innerText = perc1Comp > 5 ? perc1Comp + '%' : '';
         document.getElementById('pb1Fail').style.width = perc1Fail + '%'; document.getElementById('pb1Fail').innerText = perc1Fail > 5 ? perc1Fail + '%' : '';
         document.getElementById('pb1Act').style.width = perc1Act + '%'; document.getElementById('pb1Act').innerText = perc1Act > 5 ? perc1Act + '%' : '';
 
-        // БЛОК 2: Чистая конверсия
-        const closedLeads = countCompleted + countRefused + countCancelled;
-        const perc2Comp = closedLeads > 0 ? Math.round((countCompleted / closedLeads) * 100) : 0;
+        // БЛОК 2: Чистая конверсия (только закрытые лиды)
+        const closedLeads = countSuccessTot + countRefused + countCancelled;
+        const perc2Comp = closedLeads > 0 ? Math.round((countSuccessTot / closedLeads) * 100) : 0;
         const perc2Ref = closedLeads > 0 ? Math.round((countRefused / closedLeads) * 100) : 0;
         const perc2Canc = closedLeads > 0 ? (100 - perc2Comp - perc2Ref) : 0;
         document.getElementById('pb2Comp').style.width = perc2Comp + '%'; document.getElementById('pb2Comp').innerText = perc2Comp > 5 ? perc2Comp + '%' : '';
         document.getElementById('pb2Ref').style.width = perc2Ref + '%'; document.getElementById('pb2Ref').innerText = perc2Ref > 5 ? perc2Ref + '%' : '';
         document.getElementById('pb2Canc').style.width = perc2Canc + '%'; document.getElementById('pb2Canc').innerText = perc2Canc > 5 ? perc2Canc + '%' : '';
 
-        // БЛОК 3: Корзины
+        // БЛОК 3: Корзины (Только completed)
         const bTot = countCompleted;
         if (bTot === 0) document.getElementById('revenueBucketsCard').classList.add('d-none');
         else {
@@ -1171,14 +1187,14 @@ function calculateStats() {
             setupBucket('u5', pU5); setupBucket('5to8', p5to8); setupBucket('8to10', p8to10); setupBucket('10to20', p10to20); setupBucket('o20', pO20);
         }
 
-        // CPL = Затраты / ВСЕ заявки
+        // CPL = Затраты / ВСЕ лиды
         const cpl = totalLeads > 0 ? (adSpend / totalLeads) : 0;
-        
-        // CPA = Затраты / ТОЛЬКО ВЫПОЛНЕННЫЕ
-        const cpa = countCompleted > 0 ? (adSpend / countCompleted) : 0;
-
-        const avgBase = countCompleted + countRefused;
-        const avg = avgBase > 0 ? (net / avgBase) : 0;
+        // CPA = Затраты / (Ремонты + Диагностики)
+        const cpa = countSuccessTot > 0 ? (adSpend / countSuccessTot) : 0;
+        // Средний чек: ТОЛЬКО ПОЛНОЦЕННЫЕ РЕМОНТЫ (Иначе платные выезды уронят средний чек в 3 раза)
+        let totalCompletedNet = 0;
+        rows.forEach(r => { if(r.status === 'completed') totalCompletedNet += parseFloat(r.net_sum || 0); });
+        const avg = countCompleted > 0 ? (totalCompletedNet / countCompleted) : 0;
 
         document.getElementById('statAllLeads').innerText = totalLeads.toLocaleString('ru-RU');
         document.getElementById('statCPL').innerText = Math.round(cpl).toLocaleString('ru-RU') + ' ₽';
@@ -1188,9 +1204,12 @@ function calculateStats() {
         document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
         document.getElementById('statAvg').innerText = Math.round(avg).toLocaleString('ru-RU') + ' ₽';
 
-        document.getElementById('sc_all').innerText = totalLeads; 
+        // Обновление счетчиков вкладок аналитики
+        document.getElementById('sc_all').innerText = rows.length; 
         document.getElementById('sc_scheduled').innerText = countScheduled; 
         document.getElementById('sc_completed').innerText = countCompleted; 
+        document.getElementById('sc_diagnostic').innerText = countDiagnostic; 
+        document.getElementById('sc_warranty').innerText = countWarranty; 
         document.getElementById('sc_refused').innerText = countRefused; 
         document.getElementById('sc_cancelled').innerText = countCancelled; 
         document.getElementById('sc_active').innerText = countActive;
@@ -1220,7 +1239,7 @@ function generateTestData() {
     let totalInserted = 0;
     
     function insertBatch() {
-        let sql = "INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp) VALUES ";
+        let sql = "INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp, warranty_period) VALUES ";
         let values = [];
         for (let i = 0; i < 500; i++) {
             const id = Date.now() + totalInserted + i;
@@ -1233,13 +1252,13 @@ function generateTestData() {
             const masterId = allMasters.length ? allMasters[Math.floor(Math.random() * allMasters.length)].id : 0;
             
             const rand = Math.random(); let status = 'completed';
-            if (rand < 0.2) status = 'active'; else if (rand < 0.3) status = 'refused'; else if (rand < 0.4) status = 'cancelled'; else if (rand < 0.5) status = 'scheduled';
+            if (rand < 0.15) status = 'active'; else if (rand < 0.25) status = 'refused'; else if (rand < 0.35) status = 'cancelled'; else if (rand < 0.45) status = 'scheduled'; else if (rand < 0.55) status = 'diagnostic'; else if (rand < 0.6) status = 'warranty';
             
             const ts = Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000); 
             const closedTs = (status !== 'active' && status !== 'scheduled') ? ts + (Math.floor(Math.random() * 5 * 86400000)) : 'NULL';
-            const schedTs = status === 'scheduled' ? ts + 86400000 : 'NULL'; // Завтрашний день для новых
+            const schedTs = status === 'scheduled' ? ts + 86400000 : 'NULL';
 
-            values.push(`(${id}, '${address}', '${name}', '${phone}', 'Тестовый', ${total}, ${parts}, ${total-parts}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs})`);
+            values.push(`(${id}, '${address}', '${name}', '${phone}', 'Тестовый', ${total}, ${parts}, ${total-parts}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs}, '12 мес')`);
         }
         window.Android.executeSql(DB_NAME, sql + values.join(", "));
         totalInserted += 500;
