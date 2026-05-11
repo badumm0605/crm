@@ -239,12 +239,31 @@
             <div class="col-6">
                 <div class="card border-0 shadow-sm bg-white">
                     <div class="card-body p-3">
+                        <small class="text-muted d-block mb-1">Выручка (Общ)</small>
+                        <h5 class="fw-bold mb-0 text-dark" id="statTotal">0 ₽</h5>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-6">
+                <div class="card border-0 shadow-sm bg-white">
+                    <div class="card-body p-3">
+                        <small class="text-muted d-block mb-1">Запчасти (Расх)</small>
+                        <h5 class="fw-bold mb-0 text-danger" id="statParts">0 ₽</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-2 mt-2">
+            <div class="col-6">
+                <div class="card border-0 shadow-sm bg-white">
+                    <div class="card-body p-3">
                         <small class="text-muted d-block mb-1">Всего заявок</small>
                         <h5 class="fw-bold mb-0 text-dark" id="statAllLeads">0</h5>
                     </div>
                 </div>
             </div>
-            
             <div class="col-6">
                 <div class="card border-0 shadow-sm bg-white">
                     <div class="card-body p-3">
@@ -529,7 +548,6 @@ function initDb() {
         )
     `);
 
-    // Миграции для старых данных
     try { 
         window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'active'`); 
         window.Android.executeSql(DB_NAME, `UPDATE orders SET status = 'completed' WHERE is_completed = 1 AND status = 'active'`);
@@ -1027,18 +1045,16 @@ function calculateActiveAging(range) {
         const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const weekTs = todayTs - 6 * 86400000;
         const monthTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-        const yearTs = new Date(now.getFullYear(), 0, 1).getTime();
         
         const sql = "SELECT timestamp FROM orders WHERE status='active'";
         const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
         
-        let aTotal=0, aToday=0, aWeek=0, aMonth=0, aYear=0, aPeriod=0;
+        let aTotal=0, aToday=0, aWeek=0, aMonth=0, aPeriod=0;
         rows.forEach(r => {
             aTotal++;
             if (r.timestamp >= todayTs) aToday++;
             if (r.timestamp >= weekTs) aWeek++;
             if (r.timestamp >= monthTs) aMonth++;
-            if (r.timestamp >= yearTs) aYear++;
             if (r.timestamp >= range.startTime && r.timestamp < range.endTime) aPeriod++;
         });
 
@@ -1046,7 +1062,6 @@ function calculateActiveAging(range) {
         document.getElementById('agToday').innerText = aToday.toLocaleString('ru-RU');
         document.getElementById('agWeek').innerText = aWeek.toLocaleString('ru-RU');
         document.getElementById('agMonth').innerText = aMonth.toLocaleString('ru-RU');
-        document.getElementById('agYear').innerText = aYear.toLocaleString('ru-RU');
         document.getElementById('agPeriod').innerText = aPeriod.toLocaleString('ru-RU');
     } catch(e) {}
 }
@@ -1207,7 +1222,7 @@ function generateTestData() {
             const name = names[Math.floor(Math.random() * names.length)];
             const phone = "89" + Math.floor(100000000 + Math.random() * 900000000);
             
-            const total = Math.floor(Math.random() * 250) * 100 + 1000; // от 1k до 26k
+            const total = Math.floor(Math.random() * 250) * 100 + 1000; 
             const parts = Math.floor(Math.random() * 15) * 100;
             
             const rand = Math.random();
