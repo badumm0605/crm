@@ -368,8 +368,9 @@
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_scheduled" onclick="setStatsFilter('scheduled'); return false;">Ожидают <span class="badge text-primary" id="sc_scheduled">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_active" onclick="setStatsFilter('active'); return false;">В работе <span class="badge" id="sc_active">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_completed" onclick="setStatsFilter('completed'); return false;">Ремонт <span class="badge" id="sc_completed">0</span></a></li>
-            
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_warranty" onclick="setStatsFilter('warranty'); return false;">Гарантия <span class="badge" id="sc_warranty">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_refused" onclick="setStatsFilter('refused'); return false;">Отказ <span class="badge" id="sc_refused">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_cancelled" onclick="setStatsFilter('cancelled'); return false;">Отмена <span class="badge" id="sc_cancelled">0</span></a></li>
         </ul>
 
         <div id="statsOrdersList" class="d-flex flex-column gap-3 mb-5"></div>
@@ -645,14 +646,16 @@ function deleteMaster(id) {
 function updateGlobalCounters() {
     try {
         const res = JSON.parse(window.Android.querySql(DB_NAME, "SELECT status, COUNT(*) as c FROM orders GROUP BY status"));
-        let counts = { active: 0, completed: 0, diagnostic: 0, warranty: 0, refused: 0, cancelled: 0, scheduled: 0 };
+        let counts = { active: 0, completed: 0, warranty: 0, refused: 0, cancelled: 0, scheduled: 0 };
         res.forEach(r => { counts[r.status] = r.c; });
-        document.getElementById('mc_active').innerText = counts.active;
-        document.getElementById('mc_completed').innerText = counts.completed;
-        document.getElementById('mc_warranty').innerText = counts.warranty;
-        document.getElementById('mc_refused').innerText = counts.refused;
-        document.getElementById('mc_cancelled').innerText = counts.cancelled;
-        document.getElementById('mc_scheduled').innerText = counts.scheduled;
+        
+        // Проверяем, существует ли элемент, прежде чем писать в него цифру
+        if(document.getElementById('mc_active')) document.getElementById('mc_active').innerText = counts.active;
+        if(document.getElementById('mc_completed')) document.getElementById('mc_completed').innerText = counts.completed;
+        if(document.getElementById('mc_warranty')) document.getElementById('mc_warranty').innerText = counts.warranty;
+        if(document.getElementById('mc_refused')) document.getElementById('mc_refused').innerText = counts.refused;
+        if(document.getElementById('mc_cancelled')) document.getElementById('mc_cancelled').innerText = counts.cancelled;
+        if(document.getElementById('mc_scheduled')) document.getElementById('mc_scheduled').innerText = counts.scheduled;
     } catch(e) {}
 }
 
@@ -1216,17 +1219,19 @@ function calculateStats() {
         document.getElementById('statAvgTotal').innerText = Math.round(avgTotal).toLocaleString('ru-RU') + ' ₽';
 
         // Обновление вкладок
-        document.getElementById('sc_all').innerText = rows.length; 
-        document.getElementById('sc_scheduled').innerText = countScheduled; 
-        document.getElementById('sc_completed').innerText = countCompleted; 
-        document.getElementById('sc_warranty').innerText = countWarranty; 
-        document.getElementById('sc_refused').innerText = countRefused; 
-        document.getElementById('sc_cancelled').innerText = countCancelled; 
-        document.getElementById('sc_active').innerText = countActive;
+        // Обновление вкладок (с защитой от ошибок)
+        if(document.getElementById('sc_all')) document.getElementById('sc_all').innerText = rows.length; 
+        if(document.getElementById('sc_scheduled')) document.getElementById('sc_scheduled').innerText = countScheduled; 
+        if(document.getElementById('sc_completed')) document.getElementById('sc_completed').innerText = countCompleted; 
+        if(document.getElementById('sc_warranty')) document.getElementById('sc_warranty').innerText = countWarranty; 
+        if(document.getElementById('sc_refused')) document.getElementById('sc_refused').innerText = countRefused; 
+        if(document.getElementById('sc_cancelled')) document.getElementById('sc_cancelled').innerText = countCancelled; 
+        if(document.getElementById('sc_active')) document.getElementById('sc_active').innerText = countActive;
+
+        const chartContainerNode = document.getElementById('crmChartContainer');
         
         // И еще удалите строчку: document.getElementById('sc_diagnostic').innerText = countDiagnostic;
 
-        const chartContainerNode = document.getElementById('crmChartContainer');
         if (!range.showLineChart || Object.keys(chartDataMap).length === 0) chartContainerNode.classList.add('d-none');
         else {
             chartContainerNode.classList.remove('d-none'); let chartArray = Object.values(chartDataMap);
