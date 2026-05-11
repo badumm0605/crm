@@ -943,6 +943,7 @@ function deleteOrder() {
         updateGlobalCounters();
         if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
         else loadOrders(true); 
+        smartAutoBackup('crm');
         history.back(); 
     }
 }
@@ -982,7 +983,7 @@ function saveOrder() {
         if (total > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${total}, '${noteCategory}', '[CRM-${orderId}] ${address}', ${Date.now()}, 'crm')`);
         if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
     }
-
+smartAutoBackup('crm');
     orderModal.hide(); updateGlobalCounters();
     
     if (!document.getElementById('mainScreen').classList.contains('d-none')) loadOrders(true); 
