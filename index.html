@@ -15,7 +15,6 @@
         .order-card { border-radius: 16px; border: none; border-left: 5px solid #ffc107; transition: 0.2s; cursor: pointer; }
         .order-card.scheduled { border-left-color: #0d6efd; opacity: 1; }
         .order-card.completed { border-left-color: #198754; opacity: 0.9; }
-        .order-card.diagnostic { border-left-color: #0dcaf0; opacity: 0.9; }
         .order-card.warranty { border-left-color: #6f42c1; opacity: 0.9; }
         .order-card.refused { border-left-color: #dc3545; opacity: 0.8; }
         .order-card.cancelled { border-left-color: #6c757d; opacity: 0.7; }
@@ -80,7 +79,6 @@
             <li class="nav-item"><a class="nav-link active shadow-sm" href="#" id="tab_scheduled" onclick="setMainFilter('scheduled'); return false;">Ожидают <span class="badge text-primary" id="mc_scheduled">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_active" onclick="setMainFilter('active'); return false;">В работе <span class="badge" id="mc_active">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_completed" onclick="setMainFilter('completed'); return false;">Ремонт <span class="badge" id="mc_completed">0</span></a></li>
-            
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_warranty" onclick="setMainFilter('warranty'); return false;">Гарантия <span class="badge" id="mc_warranty">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_refused" onclick="setMainFilter('refused'); return false;">Отказы <span class="badge" id="mc_refused">0</span></a></li>
             <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_cancelled" onclick="setMainFilter('cancelled'); return false;">Отмены <span class="badge" id="mc_cancelled">0</span></a></li>
@@ -92,7 +90,7 @@
             <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="clearDatabase()">Очистить тестовую базу</button>
         </div>
 
-        <div id="ordersList" class="d-flex flex-column gap-3 mt-3"></div>
+        <div id="ordersList" class="d-flex flex-column gap-3 mt-3 mb-5"></div>
     </div>
 
     <button class="btn btn-primary fab" onclick="showOrderModal()">
@@ -232,12 +230,11 @@
             <div class="col-12">
                 <div class="card border-0 shadow-sm bg-success text-white" style="background: linear-gradient(135deg, #198754 0%, #146c43 100%);">
                     <div class="card-body p-4">
-                        <small class="opacity-75 d-block mb-1">Чистая прибыль (Ремонт, Диагн., Гарантия)</small>
+                        <small class="opacity-75 d-block mb-1">Чистая прибыль</small>
                         <h2 class="fw-bold mb-0" id="statNet">0 ₽</h2>
                     </div>
                 </div>
             </div>
-            
             <div class="col-6">
                 <div class="card border-0 shadow-sm bg-white">
                     <div class="card-body p-3">
@@ -246,7 +243,6 @@
                     </div>
                 </div>
             </div>
-            
             <div class="col-6">
                 <div class="card border-0 shadow-sm bg-white">
                     <div class="card-body p-3">
@@ -277,7 +273,7 @@
             <div class="col-4">
                 <div class="card border-0 shadow-sm bg-white">
                     <div class="card-body p-2 text-center">
-                        <small class="text-muted d-block mb-1" style="font-size: 0.65rem;">CPA (Клиент)</small>
+                        <small class="text-muted d-block mb-1" style="font-size: 0.65rem;">CPA (Ремонт)</small>
                         <h6 class="fw-bold mb-0 text-success" id="statCPA">0 ₽</h6>
                     </div>
                 </div>
@@ -293,7 +289,7 @@
                     <div id="pb1Act" class="progress-bar bg-warning text-dark fw-bold" style="width: 0%">0%</div>
                 </div>
                 <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem; font-weight: 700;">
-                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Успех (Ремонт+Выезд)</span>
+                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Успех</span>
                     <span class="text-danger"><i class="fa-solid fa-circle me-1"></i>Отклонено</span>
                     <span class="text-warning"><i class="fa-solid fa-circle me-1"></i>В работе/Ожидают</span>
                 </div>
@@ -315,6 +311,7 @@
                 </div>
             </div>
         </div>
+
         <div class="card border-0 shadow-sm mt-3" id="revenueBucketsCard">
             <div class="card-body p-3">
                 <h6 class="text-muted fw-bold mb-2">Структура чеков (Только Ремонты)</h6>
@@ -630,20 +627,28 @@ function loadMasters() {
     try { allMasters = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM masters ORDER BY name ASC")); } catch(e) { allMasters = []; }
     
     const omSelect = document.getElementById('orderMaster');
-    omSelect.innerHTML = '<option value="0">Не выбран</option>';
-    allMasters.forEach(m => omSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`);
+    if (omSelect) {
+        omSelect.innerHTML = '<option value="0">Не выбран</option>';
+        allMasters.forEach(m => omSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`);
+    }
     
     const stSelect = document.getElementById('statsMaster');
-    stSelect.innerHTML = '<option value="all">Все мастера</option>';
-    allMasters.forEach(m => stSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`);
+    if (stSelect) {
+        stSelect.innerHTML = '<option value="all">Все мастера</option>';
+        allMasters.forEach(m => stSelect.innerHTML += `<option value="${m.id}">${m.name}</option>`);
+    }
 
     const list = document.getElementById('mastersList');
-    list.innerHTML = '';
-    allMasters.forEach(m => {
-        list.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center py-3"><span class="fw-bold">${m.name}</span><button class="btn btn-outline-danger btn-sm rounded-circle" onclick="deleteMaster(${m.id})"><i class="fa-solid fa-trash"></i></button></li>`;
-    });
+    if (list) {
+        list.innerHTML = '';
+        allMasters.forEach(m => {
+            list.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center py-3"><span class="fw-bold">${m.name}</span><button class="btn btn-outline-danger btn-sm rounded-circle" onclick="deleteMaster(${m.id})"><i class="fa-solid fa-trash"></i></button></li>`;
+        });
+    }
 }
+
 function openMastersModal() { new bootstrap.Modal(document.getElementById('mastersModal')).show(); }
+
 function addMaster() {
     const name = document.getElementById('newMasterName').value.trim().replace(/'/g, "''");
     if (!name) return;
@@ -651,6 +656,7 @@ function addMaster() {
     document.getElementById('newMasterName').value = '';
     loadMasters();
 }
+
 function deleteMaster(id) {
     if(confirm("Удалить мастера?")) {
         window.Android.executeSql(DB_NAME, `DELETE FROM masters WHERE id=${id}`);
@@ -664,13 +670,12 @@ function updateGlobalCounters() {
         let counts = { active: 0, completed: 0, warranty: 0, refused: 0, cancelled: 0, scheduled: 0 };
         res.forEach(r => { counts[r.status] = r.c; });
         
-        // Проверяем, существует ли элемент, прежде чем писать в него цифру
-        if(document.getElementById('mc_active')) document.getElementById('mc_active').innerText = counts.active;
-        if(document.getElementById('mc_completed')) document.getElementById('mc_completed').innerText = counts.completed;
-        if(document.getElementById('mc_warranty')) document.getElementById('mc_warranty').innerText = counts.warranty;
-        if(document.getElementById('mc_refused')) document.getElementById('mc_refused').innerText = counts.refused;
-        if(document.getElementById('mc_cancelled')) document.getElementById('mc_cancelled').innerText = counts.cancelled;
-        if(document.getElementById('mc_scheduled')) document.getElementById('mc_scheduled').innerText = counts.scheduled;
+        if (document.getElementById('mc_active')) document.getElementById('mc_active').innerText = counts.active;
+        if (document.getElementById('mc_completed')) document.getElementById('mc_completed').innerText = counts.completed;
+        if (document.getElementById('mc_warranty')) document.getElementById('mc_warranty').innerText = counts.warranty;
+        if (document.getElementById('mc_refused')) document.getElementById('mc_refused').innerText = counts.refused;
+        if (document.getElementById('mc_cancelled')) document.getElementById('mc_cancelled').innerText = counts.cancelled;
+        if (document.getElementById('mc_scheduled')) document.getElementById('mc_scheduled').innerText = counts.scheduled;
     } catch(e) {}
 }
 
@@ -684,7 +689,9 @@ function setMainFilter(filterType) {
     currentMainFilter = filterType;
     ['scheduled', 'active', 'completed', 'warranty', 'refused', 'cancelled'].forEach(f => {
         const tab = document.getElementById('tab_' + f);
-        if (f === filterType) tab.classList.add('active', 'shadow-sm'); else tab.classList.remove('active', 'shadow-sm');
+        if (tab) {
+            if (f === filterType) tab.classList.add('active', 'shadow-sm'); else tab.classList.remove('active', 'shadow-sm');
+        }
     });
     loadOrders(true);
 }
@@ -693,8 +700,8 @@ function loadOrders(reset = false) {
     if (reset) {
         currentOffset = 0; hasMoreData = true; allOrders = []; document.getElementById('ordersList').innerHTML = ''; updateGlobalCounters();
         try {
-            const sumResult = JSON.parse(window.Android.querySql(DB_NAME, "SELECT SUM(net_sum) as total FROM orders WHERE status IN ('completed', 'diagnostic', 'warranty')"));
-            document.getElementById('totalNetProfit').innerText = Number(sumResult[0].total || 0).toLocaleString('ru-RU') + ' ₽';
+            const sumResult = JSON.parse(window.Android.querySql(DB_NAME, "SELECT SUM(net_sum) as total FROM orders WHERE status IN ('completed', 'warranty', 'refused', 'cancelled')"));
+            if(document.getElementById('totalNetProfit')) document.getElementById('totalNetProfit').innerText = Number(sumResult[0].total || 0).toLocaleString('ru-RU') + ' ₽';
         } catch (e) {}
     }
     if (!hasMoreData || isLoading) return;
@@ -750,6 +757,8 @@ function loadStatsOrders(reset = false) {
 
 function renderOrdersChunk(ordersChunk, containerId, isReset) {
     const container = document.getElementById(containerId);
+    if (!container) return;
+    
     if (isReset && ordersChunk.length === 0) { container.innerHTML = `<p class="text-center text-muted mt-4">Нет заказов</p>`; return; }
 
     let htmlChunk = '';
@@ -763,7 +772,7 @@ function renderOrdersChunk(ordersChunk, containerId, isReset) {
             else dateHtml = `<span class="text-primary fw-bold">Без времени</span>`;
         }
         else if (o.status === 'completed') { statusBadge = '<span class="badge bg-success">Ремонт</span>'; cardColor = 'completed'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
-        else if (o.status === 'warranty') { statusBadge = '<span class="badge bg-purple" style="background-color: #6f42c1;">Гарантия</span>'; cardColor = 'warranty'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
+        else if (o.status === 'warranty') { statusBadge = '<span class="badge text-white" style="background-color: #6f42c1;">Гарантия</span>'; cardColor = 'warranty'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
         else if (o.status === 'refused') { statusBadge = '<span class="badge bg-danger">Отказ</span>'; cardColor = 'refused'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
         else if (o.status === 'cancelled') { statusBadge = '<span class="badge bg-secondary">Отмена</span>'; cardColor = 'cancelled'; if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`; }
         else { statusBadge = '<span class="badge bg-warning text-dark">В работе</span>'; cardColor = ''; }
@@ -800,9 +809,13 @@ window.addEventListener('scroll', () => {
     const mainFabBtn = document.querySelector('.fab'); 
     if (window.scrollY > 300) { if(scrollTopBtn) scrollTopBtn.classList.add('visible'); if(mainFabBtn) mainFabBtn.classList.add('fab-hidden'); } 
     else { if(scrollTopBtn) scrollTopBtn.classList.remove('visible'); if(mainFabBtn) mainFabBtn.classList.remove('fab-hidden'); }
+    
+    const isMainVisible = !document.getElementById('mainScreen').classList.contains('d-none');
+    const isStatsVisible = !document.getElementById('statsScreen').classList.contains('d-none');
+    
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
-        if (!document.getElementById('mainScreen').classList.contains('d-none')) loadOrders(false);
-        else if (!document.getElementById('statsScreen').classList.contains('d-none')) loadStatsOrders(false);
+        if (isMainVisible) loadOrders(false);
+        else if (isStatsVisible) loadStatsOrders(false);
     }
 });
 function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
@@ -833,12 +846,13 @@ function openDetailScreen(orderId) {
     if (o.status === 'scheduled' && o.scheduled_timestamp) {
         dStr += `<br><span class="text-primary fw-bold">Визит: ` + new Date(o.scheduled_timestamp).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + `</span>`;
     }
-    if (o.status !== 'active' && o.status !== 'scheduled' && o.closed_timestamp) dStr += `<br>Закрыт: <i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    if (o.status !== 'active' && o.status !== 'scheduled' && o.closed_timestamp) {
+        dStr += `<br>Закрыт: <i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    }
     document.getElementById('detDate').innerHTML = dStr;
     
     let statusHtml = '';
-    if (o.status === 'completed') statusHtml = '<span class="badge bg-success">Выполнен</span>';
-    else if (o.status === 'diagnostic') statusHtml = '<span class="badge bg-info text-dark">Платный выезд</span>';
+    if (o.status === 'completed') statusHtml = '<span class="badge bg-success">Ремонт</span>';
     else if (o.status === 'warranty') statusHtml = '<span class="badge text-white" style="background-color: #6f42c1;">Гарантия</span>';
     else if (o.status === 'refused') statusHtml = '<span class="badge bg-danger">Отказ</span>';
     else if (o.status === 'cancelled') statusHtml = '<span class="badge bg-secondary">Отмена</span>';
@@ -865,7 +879,7 @@ function showOrderModal() {
     document.getElementById('orderScheduledTime').value = '';
     
     const masterSelect = document.getElementById('orderMaster');
-    if(allMasters.length > 0) masterSelect.value = allMasters[allMasters.length-1].id;
+    if(masterSelect && allMasters.length > 0) masterSelect.value = allMasters[allMasters.length-1].id;
     
     orderModal.show(); history.pushState({ page: 'modal' }, "Modal", "#modal");
 }
@@ -941,7 +955,6 @@ function saveOrder() {
     window.Android.executeSql(DB_NAME, sql);
     window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
 
-    // В финансы отправляем завершенные ремонты, гарантию, а также отказы/отмены, если клиент оплатил выезд (total > 0)
     if (status === 'completed' || status === 'warranty' || status === 'refused' || status === 'cancelled') {
         let noteCategory = 'Услуги ремонта';
         if (status === 'warranty') noteCategory = 'Гарантийный выезд';
@@ -1001,8 +1014,12 @@ function openStatsScreen() {
     document.getElementById('statsScreen').classList.remove('d-none');
     
     const yearSelect = document.getElementById('statsYear');
-    if (yearSelect.options.length === 0) { for (let y = new Date().getFullYear(); y >= 2023; y--) yearSelect.innerHTML += `<option value="${y}">${y}</option>`; }
-    document.getElementById('statsMonth').value = new Date().getMonth();
+    if (yearSelect && yearSelect.options.length === 0) { 
+        for (let y = new Date().getFullYear(); y >= 2023; y--) yearSelect.innerHTML += `<option value="${y}">${y}</option>`; 
+    }
+    const monthSelect = document.getElementById('statsMonth');
+    if (monthSelect) monthSelect.value = new Date().getMonth();
+
     window.scrollTo(0, 0); history.pushState({ page: 'stats' }, "Stats", "#stats");
     triggerCalculateStats();
 }
@@ -1012,15 +1029,28 @@ function closeStatsScreen() { history.back(); }
 let rangeModal = null; let calCurrentDate = new Date(); let rangeStart = null; let rangeEnd = null; let dbMinTs = null; let dbMaxTs = null; let finalRangeStart = null; let finalRangeEnd = null;
 
 function togglePeriodSelector() {
-    const period = document.getElementById('statsPeriod').value; const customBox = document.getElementById('customMonthSelector'); const rangeInfo = document.getElementById('rangeSelectedInfo');
-    customBox.classList.add('d-none'); if (rangeInfo) rangeInfo.classList.add('d-none');
-    if (period === 'custom') { customBox.classList.remove('d-none'); triggerCalculateStats(); } 
-    else if (period === 'range') { if (rangeInfo) rangeInfo.classList.remove('d-none'); openDateRangeModal(); } 
+    const period = document.getElementById('statsPeriod').value; 
+    const customBox = document.getElementById('customMonthSelector'); 
+    const rangeInfo = document.getElementById('rangeSelectedInfo');
+    
+    if (customBox) customBox.classList.add('d-none'); 
+    if (rangeInfo) rangeInfo.classList.add('d-none');
+    
+    if (period === 'custom') { 
+        if (customBox) customBox.classList.remove('d-none'); 
+        triggerCalculateStats(); 
+    } 
+    else if (period === 'range') { 
+        if (rangeInfo) rangeInfo.classList.remove('d-none'); 
+        openDateRangeModal(); 
+    } 
     else { triggerCalculateStats(); }
 }
 
 function getStatsDateRange() {
-    const period = document.getElementById('statsPeriod').value; const now = new Date();
+    const periodEl = document.getElementById('statsPeriod');
+    const period = periodEl ? periodEl.value : 'month';
+    const now = new Date();
     let startTime = 0, endTime = 4102444800000; let showLineChart = true; let chartType = 'daily'; 
     if (period === 'today') { startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); showLineChart = false; } 
     else if (period === '24h') { startTime = now.getTime() - (24 * 60 * 60 * 1000); showLineChart = false; } 
@@ -1028,7 +1058,11 @@ function getStatsDateRange() {
     else if (period === 'month') { startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); } 
     else if (period === 'lastMonth') { startTime = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime(); endTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); } 
     else if (period === 'year') { startTime = new Date(now.getFullYear(), 0, 1).getTime(); chartType = 'monthly'; } 
-    else if (period === 'custom') { const sm = parseInt(document.getElementById('statsMonth').value); const sy = parseInt(document.getElementById('statsYear').value); startTime = new Date(sy, sm, 1).getTime(); endTime = new Date(sy, sm + 1, 1).getTime(); } 
+    else if (period === 'custom') { 
+        const smEl = document.getElementById('statsMonth'); const syEl = document.getElementById('statsYear');
+        const sm = smEl ? parseInt(smEl.value) : 0; const sy = syEl ? parseInt(syEl.value) : 2024;
+        startTime = new Date(sy, sm, 1).getTime(); endTime = new Date(sy, sm + 1, 1).getTime(); 
+    } 
     else if (period === 'all') { chartType = 'monthly'; } 
     else if (period === 'range') {
         startTime = finalRangeStart || 0; endTime = finalRangeEnd || 4102444800000;
@@ -1044,13 +1078,17 @@ function openDateRangeModal() {
         if (res[0] && res[0].minTs) { dbMinTs = new Date(res[0].minTs).setHours(0,0,0,0); dbMaxTs = new Date(res[0].maxTs).setHours(23,59,59,999); } 
         else { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
     } catch(e) { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
-    rangeStart = null; rangeEnd = null; document.getElementById('btnApplyRange').disabled = true; calCurrentDate = new Date(dbMaxTs); 
+    rangeStart = null; rangeEnd = null; 
+    const btnApp = document.getElementById('btnApplyRange');
+    if (btnApp) btnApp.disabled = true; 
+    calCurrentDate = new Date(dbMaxTs); 
     renderCalendar(); rangeModal.show();
 }
 function changeCalMonth(dir) { calCurrentDate.setMonth(calCurrentDate.getMonth() + dir); renderCalendar(); }
 function renderCalendar() {
     const year = calCurrentDate.getFullYear(); const month = calCurrentDate.getMonth();
-    document.getElementById('calMonthYear').innerText = new Date(year, month).toLocaleString('ru-RU', {month: 'long', year: 'numeric'});
+    const cMy = document.getElementById('calMonthYear');
+    if (cMy) cMy.innerText = new Date(year, month).toLocaleString('ru-RU', {month: 'long', year: 'numeric'});
     const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
     let offset = firstDay === 0 ? 6 : firstDay - 1; 
 
@@ -1062,16 +1100,25 @@ function renderCalendar() {
         if (rangeStart && tsStart === rangeStart) cls += ' selected'; else if (rangeEnd && tsStart === rangeEnd) cls += ' selected'; else if (rangeStart && rangeEnd && tsStart > rangeStart && tsStart < rangeEnd) cls += ' in-range';
         html += `<div class="${cls}" ${isOut ? '' : `onclick="clickCalDay(${tsStart})"`}>${d}</div>`;
     }
-    document.getElementById('calDays').innerHTML = html;
+    const cDays = document.getElementById('calDays');
+    if(cDays) cDays.innerHTML = html;
     let text = 'Выберите начальную дату';
     if (rangeStart && !rangeEnd) text = `Начало: ${new Date(rangeStart).toLocaleDateString('ru-RU')}. Выберите конец.`;
     if (rangeStart && rangeEnd) text = `${new Date(rangeStart).toLocaleDateString('ru-RU')} - ${new Date(rangeEnd).toLocaleDateString('ru-RU')}`;
-    document.getElementById('calSelectedText').innerText = text;
+    const csText = document.getElementById('calSelectedText');
+    if (csText) csText.innerText = text;
 }
 function clickCalDay(ts) {
-    if (!rangeStart || (rangeStart && rangeEnd)) { rangeStart = ts; rangeEnd = null; document.getElementById('btnApplyRange').disabled = true; } 
+    const btnApp = document.getElementById('btnApplyRange');
+    if (!rangeStart || (rangeStart && rangeEnd)) { 
+        rangeStart = ts; rangeEnd = null; 
+        if (btnApp) btnApp.disabled = true; 
+    } 
     else if (ts < rangeStart) { rangeStart = ts; rangeEnd = null; } 
-    else { rangeEnd = ts; document.getElementById('btnApplyRange').disabled = false; }
+    else { 
+        rangeEnd = ts; 
+        if (btnApp) btnApp.disabled = false; 
+    }
     renderCalendar();
 }
 function applyDateRange() {
@@ -1079,19 +1126,31 @@ function applyDateRange() {
     finalRangeStart = rangeStart; finalRangeEnd = rangeEnd + (23 * 60 * 60 * 1000) + (59 * 60 * 1000) + 59000; 
     const startStr = new Date(finalRangeStart).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
     const endStr = new Date(finalRangeEnd).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
-    document.getElementById('rangeBtnText').innerText = `${startStr} - ${endStr}`;
+    const rBtnText = document.getElementById('rangeBtnText');
+    if (rBtnText) rBtnText.innerText = `${startStr} - ${endStr}`;
     rangeModal.hide(); triggerCalculateStats();
 }
-function cancelDateRange() { if (!finalRangeStart || !finalRangeEnd) { document.getElementById('statsPeriod').value = 'month'; togglePeriodSelector(); } }
+function cancelDateRange() { 
+    if (!finalRangeStart || !finalRangeEnd) { 
+        const sPer = document.getElementById('statsPeriod');
+        if (sPer) sPer.value = 'month'; 
+        togglePeriodSelector(); 
+    } 
+}
 
 function triggerCalculateStats() {
-    document.getElementById('loadingOverlay').classList.remove('d-none');
-    setTimeout(() => { calculateStats(); document.getElementById('loadingOverlay').classList.add('d-none'); }, 50);
+    const lo = document.getElementById('loadingOverlay');
+    if (lo) lo.classList.remove('d-none');
+    setTimeout(() => { 
+        calculateStats(); 
+        if (lo) lo.classList.add('d-none'); 
+    }, 50);
 }
 
 function calculateActiveAging() {
     try {
-        const masterSql = document.getElementById('statsMaster').value !== 'all' ? ` AND master_id=${document.getElementById('statsMaster').value} ` : '';
+        const sMast = document.getElementById('statsMaster');
+        const masterSql = (sMast && sMast.value !== 'all') ? ` AND master_id=${sMast.value} ` : '';
         const now = new Date(); const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); const weekTs = todayTs - 6 * 86400000;
         const monthTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
         
@@ -1103,11 +1162,11 @@ function calculateActiveAging() {
             aTotal++; if (r.timestamp >= todayTs) aToday++; if (r.timestamp >= weekTs) aWeek++; if (r.timestamp >= monthTs) aMonth++; if (r.timestamp >= range.startTime && r.timestamp < range.endTime) aPeriod++;
         });
 
-        document.getElementById('agTotal').innerText = aTotal.toLocaleString('ru-RU');
-        document.getElementById('agToday').innerText = aToday.toLocaleString('ru-RU');
-        document.getElementById('agWeek').innerText = aWeek.toLocaleString('ru-RU');
-        document.getElementById('agMonth').innerText = aMonth.toLocaleString('ru-RU');
-        document.getElementById('agPeriod').innerText = aPeriod.toLocaleString('ru-RU');
+        if(document.getElementById('agTotal')) document.getElementById('agTotal').innerText = aTotal.toLocaleString('ru-RU');
+        if(document.getElementById('agToday')) document.getElementById('agToday').innerText = aToday.toLocaleString('ru-RU');
+        if(document.getElementById('agWeek')) document.getElementById('agWeek').innerText = aWeek.toLocaleString('ru-RU');
+        if(document.getElementById('agMonth')) document.getElementById('agMonth').innerText = aMonth.toLocaleString('ru-RU');
+        if(document.getElementById('agPeriod')) document.getElementById('agPeriod').innerText = aPeriod.toLocaleString('ru-RU');
     } catch(e) {}
 }
 
@@ -1121,13 +1180,15 @@ function openCplModal() {
         if(rows.length === 0) html = '<p class="text-muted text-center py-4">Нет списаний с целевых счетов за этот период.</p>';
     } catch(e) { html = '<p class="text-muted text-center py-4">Нет данных или таблица счетов не настроена.</p>'; }
     
-    document.getElementById('cplDetailsList').innerHTML = html;
+    const cplList = document.getElementById('cplDetailsList');
+    if (cplList) cplList.innerHTML = html;
     new bootstrap.Modal(document.getElementById('cplModal')).show();
 }
 
 function calculateStats() {
     const range = getStatsDateRange();
-    const masterSql = document.getElementById('statsMaster').value !== 'all' ? ` AND master_id=${document.getElementById('statsMaster').value} ` : '';
+    const sMast = document.getElementById('statsMaster');
+    const masterSql = (sMast && sMast.value !== 'all') ? ` AND master_id=${sMast.value} ` : '';
     
     calculateActiveAging();
 
@@ -1189,30 +1250,42 @@ function calculateStats() {
         const perc1Comp = totalLeads > 0 ? Math.round((countCompleted / totalLeads) * 100) : 0;
         const perc1Fail = totalLeads > 0 ? Math.round((countFailedTot / totalLeads) * 100) : 0;
         const perc1Act = totalLeads > 0 ? (100 - perc1Comp - perc1Fail) : 0; 
-        document.getElementById('pb1Comp').style.width = perc1Comp + '%'; document.getElementById('pb1Comp').innerText = perc1Comp > 5 ? perc1Comp + '%' : '';
-        document.getElementById('pb1Fail').style.width = perc1Fail + '%'; document.getElementById('pb1Fail').innerText = perc1Fail > 5 ? perc1Fail + '%' : '';
-        document.getElementById('pb1Act').style.width = perc1Act + '%'; document.getElementById('pb1Act').innerText = perc1Act > 5 ? perc1Act + '%' : '';
+        
+        if(document.getElementById('pb1Comp')) {
+            document.getElementById('pb1Comp').style.width = perc1Comp + '%'; document.getElementById('pb1Comp').innerText = perc1Comp > 5 ? perc1Comp + '%' : '';
+            document.getElementById('pb1Fail').style.width = perc1Fail + '%'; document.getElementById('pb1Fail').innerText = perc1Fail > 5 ? perc1Fail + '%' : '';
+            document.getElementById('pb1Act').style.width = perc1Act + '%'; document.getElementById('pb1Act').innerText = perc1Act > 5 ? perc1Act + '%' : '';
+        }
 
-        // БЛОК 2: Чистая конверсия (с защитой от удаления HTML)
-        if (document.getElementById('pb2Comp')) {
-            const closedLeads = countCompleted + countRefused + countCancelled;
-            const perc2Comp = closedLeads > 0 ? Math.round((countCompleted / closedLeads) * 100) : 0;
-            const perc2Ref = closedLeads > 0 ? Math.round((countRefused / closedLeads) * 100) : 0;
-            const perc2Canc = closedLeads > 0 ? (100 - perc2Comp - perc2Ref) : 0;
+        // БЛОК 2: Чистая конверсия (только закрытые лиды)
+        const closedLeads = countCompleted + countRefused + countCancelled;
+        const perc2Comp = closedLeads > 0 ? Math.round((countCompleted / closedLeads) * 100) : 0;
+        const perc2Ref = closedLeads > 0 ? Math.round((countRefused / closedLeads) * 100) : 0;
+        const perc2Canc = closedLeads > 0 ? (100 - perc2Comp - perc2Ref) : 0;
+        
+        if(document.getElementById('pb2Comp')) {
             document.getElementById('pb2Comp').style.width = perc2Comp + '%'; document.getElementById('pb2Comp').innerText = perc2Comp > 5 ? perc2Comp + '%' : '';
             document.getElementById('pb2Ref').style.width = perc2Ref + '%'; document.getElementById('pb2Ref').innerText = perc2Ref > 5 ? perc2Ref + '%' : '';
             document.getElementById('pb2Canc').style.width = perc2Canc + '%'; document.getElementById('pb2Canc').innerText = perc2Canc > 5 ? perc2Canc + '%' : '';
         }
+
         // БЛОК 3: Корзины (Только ремонты)
         const bTot = countCompleted;
-        if (bTot === 0) document.getElementById('revenueBucketsCard').classList.add('d-none');
-        else {
-            document.getElementById('revenueBucketsCard').classList.remove('d-none');
-            const pU5 = Math.round((bU5 / bTot) * 100); const p5to8 = Math.round((b5to8 / bTot) * 100);
-            const p8to10 = Math.round((b8to10 / bTot) * 100); const p10to20 = Math.round((b10to20 / bTot) * 100);
-            const pO20 = 100 - pU5 - p5to8 - p8to10 - p10to20;
-            const setupBucket = (id, perc) => { const el = document.getElementById('pb3_' + id); const lg = document.getElementById('lg_' + id); el.style.width = perc + '%'; el.innerText = perc > 5 ? perc + '%' : ''; if (perc > 0) lg.classList.remove('d-none'); else lg.classList.add('d-none'); };
-            setupBucket('u5', pU5); setupBucket('5to8', p5to8); setupBucket('8to10', p8to10); setupBucket('10to20', p10to20); setupBucket('o20', pO20);
+        const revCard = document.getElementById('revenueBucketsCard');
+        if (revCard) {
+            if (bTot === 0) revCard.classList.add('d-none');
+            else {
+                revCard.classList.remove('d-none');
+                const pU5 = Math.round((bU5 / bTot) * 100); const p5to8 = Math.round((b5to8 / bTot) * 100);
+                const p8to10 = Math.round((b8to10 / bTot) * 100); const p10to20 = Math.round((b10to20 / bTot) * 100);
+                const pO20 = 100 - pU5 - p5to8 - p8to10 - p10to20;
+                const setupBucket = (id, perc) => { 
+                    const el = document.getElementById('pb3_' + id); const lg = document.getElementById('lg_' + id); 
+                    if(el) { el.style.width = perc + '%'; el.innerText = perc > 5 ? perc + '%' : ''; }
+                    if(lg) { if (perc > 0) lg.classList.remove('d-none'); else lg.classList.add('d-none'); }
+                };
+                setupBucket('u5', pU5); setupBucket('5to8', p5to8); setupBucket('8to10', p8to10); setupBucket('10to20', p10to20); setupBucket('o20', pO20);
+            }
         }
 
         // РАСЧЕТЫ ПОКАЗАТЕЛЕЙ
@@ -1223,19 +1296,17 @@ function calculateStats() {
         const avgCompleted = countCompleted > 0 ? (netCompleted / countCompleted) : 0;
         const avgTotal = closedLeads > 0 ? (net / closedLeads) : 0;
 
-        document.getElementById('statAllLeads').innerText = totalLeads.toLocaleString('ru-RU');
-        document.getElementById('statCPL').innerText = Math.round(cpl).toLocaleString('ru-RU') + ' ₽';
-        document.getElementById('statCPA').innerText = Math.round(cpa).toLocaleString('ru-RU') + ' ₽';
-        document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
-        document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
-        document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statAllLeads')) document.getElementById('statAllLeads').innerText = totalLeads.toLocaleString('ru-RU');
+        if(document.getElementById('statCPL')) document.getElementById('statCPL').innerText = Math.round(cpl).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statCPA')) document.getElementById('statCPA').innerText = Math.round(cpa).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statTotal')) document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statParts')) document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statNet')) document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
         
-        // Выводим чеки
-        document.getElementById('statAvgCompleted').innerText = Math.round(avgCompleted).toLocaleString('ru-RU') + ' ₽';
-        document.getElementById('statAvgTotal').innerText = Math.round(avgTotal).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statAvgCompleted')) document.getElementById('statAvgCompleted').innerText = Math.round(avgCompleted).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statAvgTotal')) document.getElementById('statAvgTotal').innerText = Math.round(avgTotal).toLocaleString('ru-RU') + ' ₽';
 
-        // Обновление вкладок
-        // Обновление вкладок (с защитой от ошибок)
+        // Обновление вкладок аналитики
         if(document.getElementById('sc_all')) document.getElementById('sc_all').innerText = rows.length; 
         if(document.getElementById('sc_scheduled')) document.getElementById('sc_scheduled').innerText = countScheduled; 
         if(document.getElementById('sc_completed')) document.getElementById('sc_completed').innerText = countCompleted; 
@@ -1245,19 +1316,21 @@ function calculateStats() {
         if(document.getElementById('sc_active')) document.getElementById('sc_active').innerText = countActive;
 
         const chartContainerNode = document.getElementById('crmChartContainer');
-        
-        // И еще удалите строчку: document.getElementById('sc_diagnostic').innerText = countDiagnostic;
-
-        if (!range.showLineChart || Object.keys(chartDataMap).length === 0) chartContainerNode.classList.add('d-none');
-        else {
-            chartContainerNode.classList.remove('d-none'); let chartArray = Object.values(chartDataMap);
-            document.getElementById('chartTitle').innerText = range.chartType === 'daily' ? 'Динамика прибыли по дням' : 'Динамика прибыли по месяцам';
-            document.getElementById('crmChart').innerHTML = ''; 
-            if (window.Morris) {
-                new Morris.Line({
-                    element: 'crmChart', data: chartArray, xkey: 'period', ykeys: ['total', 'net', 'parts'], labels: ['Выручка', 'Чистая', 'Расход'], lineColors: ['#0d6efd', '#198754', '#dc3545'], hideHover: 'auto', resize: true, parseTime: false, 
-                    hoverCallback: function (index, options, content, row) { return `<div class="p-2 fw-bold bg-white shadow-sm border rounded" style="z-index:1000"><div class="mb-1 text-dark border-bottom pb-1">${row.period}</div><div style="color: #0d6efd">Выручка: ${Number(row.total).toLocaleString('ru-RU')} ₽</div><div style="color: #198754">Чистая: ${Number(row.net).toLocaleString('ru-RU')} ₽</div><div style="color: #dc3545">Расход: ${Number(row.parts).toLocaleString('ru-RU')} ₽</div></div>`; }
-                });
+        if (chartContainerNode) {
+            if (!range.showLineChart || Object.keys(chartDataMap).length === 0) {
+                chartContainerNode.classList.add('d-none');
+            } else {
+                chartContainerNode.classList.remove('d-none'); 
+                let chartArray = Object.values(chartDataMap);
+                if (document.getElementById('chartTitle')) document.getElementById('chartTitle').innerText = range.chartType === 'daily' ? 'Динамика прибыли по дням' : 'Динамика прибыли по месяцам';
+                if (document.getElementById('crmChart')) document.getElementById('crmChart').innerHTML = ''; 
+                
+                if (window.Morris) {
+                    new Morris.Line({
+                        element: 'crmChart', data: chartArray, xkey: 'period', ykeys: ['total', 'net', 'parts'], labels: ['Выручка', 'Чистая', 'Расход'], lineColors: ['#0d6efd', '#198754', '#dc3545'], hideHover: 'auto', resize: true, parseTime: false, 
+                        hoverCallback: function (index, options, content, row) { return `<div class="p-2 fw-bold bg-white shadow-sm border rounded" style="z-index:1000"><div class="mb-1 text-dark border-bottom pb-1">${row.period}</div><div style="color: #0d6efd">Выручка: ${Number(row.total).toLocaleString('ru-RU')} ₽</div><div style="color: #198754">Чистая: ${Number(row.net).toLocaleString('ru-RU')} ₽</div><div style="color: #dc3545">Расход: ${Number(row.parts).toLocaleString('ru-RU')} ₽</div></div>`; }
+                    });
+                }
             }
         }
         
@@ -1267,7 +1340,8 @@ function calculateStats() {
 
 function generateTestData() {
     if (!confirm("Добавить 10 000 случайных заказов?")) return;
-    const btn = document.getElementById('btnGenerate'); btn.disabled = true; btn.innerText = "Идет генерация...";
+    const btn = document.getElementById('btnGenerate'); 
+    if(btn) { btn.disabled = true; btn.innerText = "Идет генерация..."; }
     const names = ["Александр", "Елена", "Максим", "Ольга", "Иван", "Анна", "Сергей", "Наталья"];
     let totalInserted = 0;
     
@@ -1285,7 +1359,7 @@ function generateTestData() {
             const masterId = allMasters.length ? allMasters[Math.floor(Math.random() * allMasters.length)].id : 0;
             
             const rand = Math.random(); let status = 'completed';
-            if (rand < 0.15) status = 'active'; else if (rand < 0.25) status = 'refused'; else if (rand < 0.35) status = 'cancelled'; else if (rand < 0.45) status = 'scheduled'; else if (rand < 0.55) status = 'diagnostic'; else if (rand < 0.6) status = 'warranty';
+            if (rand < 0.15) status = 'active'; else if (rand < 0.25) status = 'refused'; else if (rand < 0.35) status = 'cancelled'; else if (rand < 0.45) status = 'scheduled'; else if (rand < 0.5) status = 'warranty';
             
             const ts = Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000); 
             const closedTs = (status !== 'active' && status !== 'scheduled') ? ts + (Math.floor(Math.random() * 5 * 86400000)) : 'NULL';
@@ -1297,11 +1371,13 @@ function generateTestData() {
         totalInserted += 500;
         
         if (totalInserted < 10000) {
-            btn.innerText = `Добавлено: ${totalInserted} / 10000`; setTimeout(insertBatch, 20);
+            if(btn) btn.innerText = `Добавлено: ${totalInserted} / 10000`; 
+            setTimeout(insertBatch, 20);
         } else {
-            btn.disabled = false; btn.innerText = "Сгенерировать 10 000 заказов";
+            if(btn) { btn.disabled = false; btn.innerText = "Сгенерировать 10 000 заказов"; }
             updateGlobalCounters(); loadOrders(true);
-            if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
+            const statsScrn = document.getElementById('statsScreen');
+            if (statsScrn && !statsScrn.classList.contains('d-none')) triggerCalculateStats();
             alert("Успешно добавлено!");
         }
     }
@@ -1312,7 +1388,8 @@ function clearDatabase() {
     if (!confirm("Удалить тестовые заказы?")) return;
     window.Android.executeSql(DB_NAME, "DELETE FROM orders WHERE description = 'Тестовый'");
     updateGlobalCounters(); loadOrders(true);
-    if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
+    const statsScrn = document.getElementById('statsScreen');
+    if (statsScrn && !statsScrn.classList.contains('d-none')) triggerCalculateStats();
     alert("Тестовые данные успешно удалены!");
 }
 
