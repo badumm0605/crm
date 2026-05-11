@@ -300,6 +300,21 @@
             </div>
         </div>
 
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body p-3">
+                <h6 class="text-muted fw-bold mb-2">Чистая конверсия (только закрытые)</h6>
+                <div class="progress" style="height: 25px; border-radius: 12px;">
+                    <div id="pb2Comp" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
+                    <div id="pb2Ref" class="progress-bar" style="width: 0%; background-color: #dc3545; font-weight: bold;">0%</div>
+                    <div id="pb2Canc" class="progress-bar" style="width: 0%; background-color: #6c757d; font-weight: bold;">0%</div>
+                </div>
+                <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem; font-weight: 700;">
+                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Выполнены</span>
+                    <span style="color: #dc3545;"><i class="fa-solid fa-circle me-1"></i>Отказ</span>
+                    <span style="color: #6c757d;"><i class="fa-solid fa-circle me-1"></i>Отмена</span>
+                </div>
+            </div>
+        </div>
         <div class="card border-0 shadow-sm mt-3" id="revenueBucketsCard">
             <div class="card-body p-3">
                 <h6 class="text-muted fw-bold mb-2">Структура чеков (Только Ремонты)</h6>
@@ -1178,15 +1193,16 @@ function calculateStats() {
         document.getElementById('pb1Fail').style.width = perc1Fail + '%'; document.getElementById('pb1Fail').innerText = perc1Fail > 5 ? perc1Fail + '%' : '';
         document.getElementById('pb1Act').style.width = perc1Act + '%'; document.getElementById('pb1Act').innerText = perc1Act > 5 ? perc1Act + '%' : '';
 
-        // БЛОК 2: Чистая конверсия (только закрытые лиды)
-        const closedLeads = countCompleted + countRefused + countCancelled;
-        const perc2Comp = closedLeads > 0 ? Math.round((countCompleted / closedLeads) * 100) : 0;
-        const perc2Ref = closedLeads > 0 ? Math.round((countRefused / closedLeads) * 100) : 0;
-        const perc2Canc = closedLeads > 0 ? (100 - perc2Comp - perc2Ref) : 0;
-        document.getElementById('pb2Comp').style.width = perc2Comp + '%'; document.getElementById('pb2Comp').innerText = perc2Comp > 5 ? perc2Comp + '%' : '';
-        document.getElementById('pb2Ref').style.width = perc2Ref + '%'; document.getElementById('pb2Ref').innerText = perc2Ref > 5 ? perc2Ref + '%' : '';
-        document.getElementById('pb2Canc').style.width = perc2Canc + '%'; document.getElementById('pb2Canc').innerText = perc2Canc > 5 ? perc2Canc + '%' : '';
-
+        // БЛОК 2: Чистая конверсия (с защитой от удаления HTML)
+        if (document.getElementById('pb2Comp')) {
+            const closedLeads = countCompleted + countRefused + countCancelled;
+            const perc2Comp = closedLeads > 0 ? Math.round((countCompleted / closedLeads) * 100) : 0;
+            const perc2Ref = closedLeads > 0 ? Math.round((countRefused / closedLeads) * 100) : 0;
+            const perc2Canc = closedLeads > 0 ? (100 - perc2Comp - perc2Ref) : 0;
+            document.getElementById('pb2Comp').style.width = perc2Comp + '%'; document.getElementById('pb2Comp').innerText = perc2Comp > 5 ? perc2Comp + '%' : '';
+            document.getElementById('pb2Ref').style.width = perc2Ref + '%'; document.getElementById('pb2Ref').innerText = perc2Ref > 5 ? perc2Ref + '%' : '';
+            document.getElementById('pb2Canc').style.width = perc2Canc + '%'; document.getElementById('pb2Canc').innerText = perc2Canc > 5 ? perc2Canc + '%' : '';
+        }
         // БЛОК 3: Корзины (Только ремонты)
         const bTot = countCompleted;
         if (bTot === 0) document.getElementById('revenueBucketsCard').classList.add('d-none');
