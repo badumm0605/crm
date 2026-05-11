@@ -19,8 +19,9 @@
             border-radius: 16px; border: none; border-left: 5px solid #ffc107; transition: 0.2s; cursor: pointer;
         }
         .order-card.completed { border-left-color: #198754; opacity: 0.9; }
+        .order-card.refused { border-left-color: #dc3545; opacity: 0.8; }
+        .order-card.cancelled { border-left-color: #6c757d; opacity: 0.7; }
         
-        .phone-link { color: #0d6efd; text-decoration: none; font-weight: 600; }
         .financial-row { background-color: #f8f9fa; border-radius: 8px; padding: 8px; }
         
         .fab {
@@ -31,9 +32,7 @@
             background-color: #2a2a4a; color: white; border: none;
             transition: 0.3s ease-in-out;
         }
-        .fab-hidden {
-            opacity: 0; visibility: hidden; transform: scale(0.8); pointer-events: none;
-        }
+        .fab-hidden { opacity: 0; visibility: hidden; transform: scale(0.8); pointer-events: none; }
 
         .scroll-top-btn {
             position: fixed; bottom: 24px; right: 24px; width: 60px; height: 60px;
@@ -44,18 +43,30 @@
         }
         .scroll-top-btn.visible { opacity: 1; visibility: visible; }
 
-        /* Фиксы Morris */
+        /* ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ ВКЛАДОК */
+        .horizontal-tabs {
+            display: flex; flex-wrap: nowrap; overflow-x: auto;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 0.5rem; padding-bottom: 5px;
+        }
+        .horizontal-tabs::-webkit-scrollbar { display: none; }
+        .horizontal-tabs .nav-link {
+            white-space: nowrap; border-radius: 12px !important; background-color: #fff;
+            color: #6c757d; border: 1px solid #dee2e6; padding: 0.4rem 0.8rem; font-weight: 600;
+        }
+        .horizontal-tabs .nav-link.active { background-color: #2a2a4a; color: #fff !important; border-color: #2a2a4a; }
+        .horizontal-tabs .badge { font-size: 0.75rem; background-color: #e9ecef !important; color: #495057 !important; margin-left: 6px; }
+        .horizontal-tabs .nav-link.active .badge { background-color: rgba(255,255,255,0.2) !important; color: #fff !important; }
+
         .morris-hover { position: absolute; z-index: 1000 !important; }
         .chart-container-card { overflow: visible !important; } 
         .morris-default-style { font-family: inherit; }
 
-        /* Оверлей загрузки */
         .loading-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(240, 242, 245, 0.85); backdrop-filter: blur(2px);
             z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        /* КАЛЕНДАРЬ (ВЫБОР ПЕРИОДА) */
+        
         .cal-day { width: 14.28%; padding: 10px 0; cursor: pointer; border-radius: 8px; margin-bottom: 2px; transition: 0.2s; font-weight: bold; }
         .cal-day:hover:not(.disabled) { background-color: #e9ecef; }
         .cal-day.selected { background-color: #0d6efd; color: white; border-radius: 8px; }
@@ -80,26 +91,21 @@
         </div>
 
         <div class="mb-3 px-1 position-relative">
-            <input type="text" id="searchInput" class="form-control form-control-lg shadow-sm border-0 rounded-pill ps-4 fw-bold" placeholder="Поиск (адрес, телефон, имя...)" autocomplete="off" oninput="handleSearch(this.value)">
+            <input type="text" id="searchInput" class="form-control form-control-lg shadow-sm border-0 rounded-pill ps-4 fw-bold" placeholder="Поиск..." autocomplete="off" oninput="handleSearch(this.value)">
             <i class="fa-solid fa-search position-absolute text-muted" style="top: 50%; right: 25px; transform: translateY(-50%);"></i>
         </div>
 
-        <ul class="nav nav-pills nav-fill mb-3 bg-white rounded-3 shadow-sm p-1" id="orderTabs" style="border: 1px solid #dee2e6;">
-            <li class="nav-item">
-                <a class="nav-link active fw-bold rounded-3" href="#" id="tab_active" onclick="setFilter('active'); return false;">В работе</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link fw-bold rounded-3 text-muted" href="#" id="tab_completed" onclick="setFilter('completed'); return false;">Готовые</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link fw-bold rounded-3 text-muted" href="#" id="tab_failed" onclick="setFilter('failed'); return false;">Отказы</a>
-            </li>
+        <ul class="nav horizontal-tabs mb-3 px-1" id="mainTabs">
+            <li class="nav-item"><a class="nav-link active shadow-sm" href="#" id="tab_active" onclick="setMainFilter('active'); return false;">В работе <span class="badge" id="mc_active">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_completed" onclick="setMainFilter('completed'); return false;">Выполнены <span class="badge" id="mc_completed">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_refused" onclick="setMainFilter('refused'); return false;">Отказы <span class="badge" id="mc_refused">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="tab_cancelled" onclick="setMainFilter('cancelled'); return false;">Отмены <span class="badge" id="mc_cancelled">0</span></a></li>
         </ul>
 
-        <div class="alert alert-warning mt-4 shadow-sm border-0">
+        <div class="alert alert-warning mt-2 shadow-sm border-0">
             <h6 class="fw-bold"><i class="fa-solid fa-bug me-2"></i>Панель разработчика</h6>
             <button class="btn btn-dark btn-sm w-100 mb-2 fw-bold" onclick="generateTestData()" id="btnGenerate">Сгенерировать 10 000 заказов</button>
-            <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="clearDatabase()">Очистить базу</button>
+            <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="clearDatabase()">Очистить тестовую базу</button>
         </div>
 
         <div id="ordersList" class="d-flex flex-column gap-3 mt-3"></div>
@@ -127,8 +133,8 @@
                         <span id="detStatus"></span>
                     </div>
                     <div class="text-end">
-                        <small class="text-muted d-block">Дата</small>
-                        <strong id="detDate"></strong>
+                        <small class="text-muted d-block">Даты</small>
+                        <strong id="detDate" class="d-block" style="font-size: 0.85rem;"></strong>
                     </div>
                 </div>
 
@@ -224,7 +230,7 @@
             <div class="col-12">
                 <div class="card border-0 shadow-sm bg-success text-white" style="background: linear-gradient(135deg, #198754 0%, #146c43 100%);">
                     <div class="card-body p-4">
-                        <small class="opacity-75 d-block mb-1">Чистая прибыль (Дельта)</small>
+                        <small class="opacity-75 d-block mb-1">Чистая прибыль (Выполненные)</small>
                         <h2 class="fw-bold mb-0" id="statNet">0 ₽</h2>
                     </div>
                 </div>
@@ -233,8 +239,8 @@
             <div class="col-6">
                 <div class="card border-0 shadow-sm bg-white">
                     <div class="card-body p-3">
-                        <small class="text-muted d-block mb-1">Выручка (Общ)</small>
-                        <h5 class="fw-bold mb-0 text-dark" id="statTotal">0 ₽</h5>
+                        <small class="text-muted d-block mb-1">Всего заявок</small>
+                        <h5 class="fw-bold mb-0 text-dark" id="statAllLeads">0</h5>
                     </div>
                 </div>
             </div>
@@ -242,26 +248,7 @@
             <div class="col-6">
                 <div class="card border-0 shadow-sm bg-white">
                     <div class="card-body p-3">
-                        <small class="text-muted d-block mb-1">Запчасти (Расх)</small>
-                        <h5 class="fw-bold mb-0 text-danger" id="statParts">0 ₽</h5>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="row g-2 mt-2">
-            <div class="col-6">
-                <div class="card border-0 shadow-sm bg-white">
-                    <div class="card-body p-3">
-                        <small class="text-muted d-block mb-1">Всего заявок</small>
-                        <h5 class="fw-bold mb-0 text-dark" id="statAllLeads">0</h5>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6">
-                <div class="card border-0 shadow-sm bg-white">
-                    <div class="card-body p-3">
-                        <small class="text-muted d-block mb-1">Цена заявки (CPL)</small>
+                        <small class="text-muted d-block mb-1">Цена лида (CPL)</small>
                         <h5 class="fw-bold mb-0 text-primary" id="statCPL">0 ₽</h5>
                     </div>
                 </div>
@@ -270,43 +257,98 @@
 
         <div class="card border-0 shadow-sm mt-3">
             <div class="card-body p-3">
-                <h6 class="text-muted fw-bold mb-2">Конверсия</h6>
+                <h6 class="text-muted fw-bold mb-2">Общая конверсия</h6>
                 <div class="progress" style="height: 25px; border-radius: 12px;">
-                    <div id="pbCompleted" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
-                    <div id="pbFailed" class="progress-bar bg-danger fw-bold" style="width: 0%">0%</div>
-                    <div id="pbActive" class="progress-bar bg-warning text-dark fw-bold" style="width: 0%">0%</div>
+                    <div id="pb1Comp" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
+                    <div id="pb1Fail" class="progress-bar bg-danger fw-bold" style="width: 0%">0%</div>
+                    <div id="pb1Act" class="progress-bar bg-warning text-dark fw-bold" style="width: 0%">0%</div>
                 </div>
-                <div class="d-flex justify-content-between mt-2 small fw-bold">
-                    <span class="text-success"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i>Успех</span>
-                    <span class="text-danger"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i>Отказ/Отмена</span>
-                    <span class="text-warning"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i>В работе</span>
+                <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem; font-weight: 700;">
+                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Успех</span>
+                    <span class="text-danger"><i class="fa-solid fa-circle me-1"></i>Отклонено</span>
+                    <span class="text-warning"><i class="fa-solid fa-circle me-1"></i>В работе</span>
                 </div>
             </div>
         </div>
-        
+
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body p-3">
+                <h6 class="text-muted fw-bold mb-2">Чистая конверсия (только закрытые)</h6>
+                <div class="progress" style="height: 25px; border-radius: 12px;">
+                    <div id="pb2Comp" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
+                    <div id="pb2Ref" class="progress-bar" style="width: 0%; background-color: #dc3545; font-weight: bold;">0%</div>
+                    <div id="pb2Canc" class="progress-bar" style="width: 0%; background-color: #6c757d; font-weight: bold;">0%</div>
+                </div>
+                <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem; font-weight: 700;">
+                    <span class="text-success"><i class="fa-solid fa-circle me-1"></i>Выполнены</span>
+                    <span style="color: #dc3545;"><i class="fa-solid fa-circle me-1"></i>Отказ (Цена и др.)</span>
+                    <span style="color: #6c757d;"><i class="fa-solid fa-circle me-1"></i>Отмена клиента</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-3" id="revenueBucketsCard">
+            <div class="card-body p-3">
+                <h6 class="text-muted fw-bold mb-2">Структура чеков (Выполненные)</h6>
+                <div class="progress" style="height: 25px; border-radius: 12px;" id="pb3Container">
+                    <div id="pb3_u5" class="progress-bar bg-danger fw-bold" style="width: 0%">0%</div>
+                    <div id="pb3_5to8" class="progress-bar bg-secondary fw-bold" style="width: 0%">0%</div>
+                    <div id="pb3_8to10" class="progress-bar bg-success fw-bold" style="width: 0%">0%</div>
+                    <div id="pb3_10to20" class="progress-bar bg-info fw-bold" style="width: 0%">0%</div>
+                    <div id="pb3_o20" class="progress-bar bg-warning text-dark fw-bold" style="width: 0%">0%</div>
+                </div>
+                <div class="d-flex flex-wrap justify-content-between mt-2 gap-1" style="font-size: 0.65rem; font-weight: 700;" id="pb3Legend">
+                    <span class="text-danger d-none" id="lg_u5"><i class="fa-solid fa-circle me-1"></i>< 5k</span>
+                    <span class="text-secondary d-none" id="lg_5to8"><i class="fa-solid fa-circle me-1"></i>5k - 8k</span>
+                    <span class="text-success d-none" id="lg_8to10"><i class="fa-solid fa-circle me-1"></i>8k - 10k</span>
+                    <span class="text-info d-none" id="lg_10to20"><i class="fa-solid fa-circle me-1"></i>10k - 20k</span>
+                    <span class="text-warning d-none" id="lg_o20"><i class="fa-solid fa-circle me-1"></i>> 20k</span>
+                </div>
+            </div>
+        </div>
+
         <div id="crmChartContainer" class="card border-0 shadow-sm mb-4 mt-4 chart-container-card d-none">
             <div class="card-body p-2 pt-3">
                 <h6 class="text-muted fw-bold mb-3 px-2 text-center" id="chartTitle">Динамика заказов</h6>
                 <div id="crmChart" style="height: 250px;"></div>
             </div>
         </div>
-            
-        <div class="col-12 mt-4 mb-5">
-            <h6 class="text-muted fw-bold mb-3 px-1">Показатели эффективности</h6>
-            <div class="card border-0 shadow-sm mb-3">
-                <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted fw-bold">Средний чек (чист):</span>
-                    <span class="fs-5 fw-bold text-primary" id="statAvg">0 ₽</span>
-                </div>
-            </div>
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted fw-bold">Выполнено заказов:</span>
-                    <span class="fs-5 fw-bold" id="statCount">0</span>
+
+        <div class="card border-0 shadow-sm mt-4 mb-4" style="background-color: #fff9e6;">
+            <div class="card-body p-3">
+                <h6 class="text-warning text-dark fw-bold mb-3"><i class="fa-solid fa-hourglass-half me-2"></i>Зависшие (В работе)</h6>
+                <div class="row g-2 text-center small fw-bold">
+                    <div class="col-4"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">Всего</span><span class="fs-5 text-dark" id="agTotal">0</span></div></div>
+                    <div class="col-4"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">За день</span><span class="fs-5 text-dark" id="agToday">0</span></div></div>
+                    <div class="col-4"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">Неделя</span><span class="fs-5 text-dark" id="agWeek">0</span></div></div>
+                    <div class="col-6"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">Месяц</span><span class="fs-5 text-dark" id="agMonth">0</span></div></div>
+                    <div class="col-6"><div class="bg-white p-2 rounded shadow-sm border"><span class="text-muted d-block" style="font-size:0.6rem">За этот период</span><span class="fs-5 text-primary" id="agPeriod">0</span></div></div>
                 </div>
             </div>
         </div>
-        <h6 class="text-muted fw-bold mb-3 px-1 mt-5 border-top pt-4">Заказы за выбранный период</h6>
+            
+        <div class="col-12 mb-4">
+            <h6 class="text-muted fw-bold mb-3 px-1">Показатели эффективности</h6>
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted fw-bold d-block">Средний чек (чист):</span>
+                        <small class="text-muted" style="font-size:0.65rem">(Только Выполненные + Отказы)</small>
+                    </div>
+                    <span class="fs-4 fw-bold text-primary" id="statAvg">0 ₽</span>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="text-muted fw-bold mb-3 px-1 mt-4 border-top pt-4">Заказы за выбранный период</h6>
+        <ul class="nav horizontal-tabs mb-3 px-1" id="statsTabs">
+            <li class="nav-item"><a class="nav-link active shadow-sm" href="#" id="st_all" onclick="setStatsFilter('all'); return false;">Все <span class="badge" id="sc_all">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_completed" onclick="setStatsFilter('completed'); return false;">Выполнены <span class="badge" id="sc_completed">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_refused" onclick="setStatsFilter('refused'); return false;">Отказ <span class="badge" id="sc_refused">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_cancelled" onclick="setStatsFilter('cancelled'); return false;">Отмена <span class="badge" id="sc_cancelled">0</span></a></li>
+            <li class="nav-item"><a class="nav-link shadow-sm" href="#" id="st_active" onclick="setStatsFilter('active'); return false;">В работе <span class="badge" id="sc_active">0</span></a></li>
+        </ul>
+
         <div id="statsOrdersList" class="d-flex flex-column gap-3 mb-5"></div>
     </div>
 </div>
@@ -420,51 +462,787 @@
 <script src="streets.js"></script>
 
 <script>
-const DB_NAME="finance_bus.db",orderModal=new bootstrap.Modal(document.getElementById("orderModal"));let allOrders=[],currentViewedOrder=null,currentFilter="active",currentOffset=0;const LOAD_LIMIT=20;let isLoading=!1,hasMoreData=!0,statsOffset=0,statsIsLoading=!1,statsHasMoreData=!0,searchQuery="",searchTimeout=null;function initDb(){if(!window.Android||!window.Android.executeSql){console.error("Android Bridge недоступен.");return}window.Android.executeSql(DB_NAME,`
+const DB_NAME = "finance_bus.db";
+const orderModal = new bootstrap.Modal(document.getElementById('orderModal'));
+
+// === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
+let allOrders = [];
+let currentViewedOrder = null;
+let currentMainFilter = 'active'; 
+let currentOffset = 0;        
+const LOAD_LIMIT = 20;        
+let isLoading = false;        
+let hasMoreData = true;       
+
+// Аналитика
+let statsCurrentFilter = 'all'; 
+let statsOffset = 0;
+let statsIsLoading = false;
+let statsHasMoreData = true;
+
+// Поиск
+let searchQuery = "";
+let searchTimeout = null;
+
+// === ПЕРЕХВАТ НАЗАД ===
+window.addEventListener('popstate', function(event) {
+    const state = event.state;
+    if (document.getElementById('orderModal').classList.contains('show')) orderModal.hide();
+    
+    if (!state || !state.page) {
+        document.getElementById('detailScreen').classList.add('d-none');
+        document.getElementById('statsScreen').classList.add('d-none');
+        document.getElementById('mainScreen').classList.remove('d-none');
+        currentViewedOrder = null;
+        updateGlobalCounters();
+    } else if (state.page === 'detail') {
+        document.getElementById('mainScreen').classList.add('d-none');
+        document.getElementById('statsScreen').classList.add('d-none');
+        document.getElementById('detailScreen').classList.remove('d-none');
+    } else if (state.page === 'stats') {
+        document.getElementById('mainScreen').classList.add('d-none');
+        document.getElementById('detailScreen').classList.add('d-none');
+        document.getElementById('statsScreen').classList.remove('d-none');
+    }
+});
+
+document.getElementById('orderModal').addEventListener('hide.bs.modal', function () {
+    if (history.state && history.state.page === 'modal') history.back();
+});
+
+// === ИНИЦИАЛИЗАЦИЯ БД ===
+function initDb() {
+    if (!window.Android || !window.Android.executeSql) return;
+
+    window.Android.executeSql(DB_NAME, `
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY, address TEXT, client_name TEXT, phone TEXT,
             description TEXT, total_sum REAL, parts_sum REAL, net_sum REAL,
-            timestamp INTEGER, is_completed INTEGER DEFAULT 0
+            timestamp INTEGER, status TEXT DEFAULT 'active', closed_timestamp INTEGER
         )
-    `),window.Android.executeSql(DB_NAME,`
+    `);
+    
+    window.Android.executeSql(DB_NAME, `
         CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, amount REAL, 
             category TEXT, note TEXT, timestamp INTEGER, source_app TEXT DEFAULT 'finance'
         )
-    `);try{window.Android.executeSql(DB_NAME,"ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'active'"),window.Android.executeSql(DB_NAME,"UPDATE orders SET status = 'completed' WHERE is_completed = 1 AND status = 'active'")}catch(e){}loadOrders(!0)}function handleSearch(e){clearTimeout(searchTimeout),searchTimeout=setTimeout(()=>{searchQuery=e.trim().toLowerCase().replace(/'/g,"''"),loadOrders(!0)},300)}function setFilter(e){currentFilter!==e&&(currentFilter=e,["active","completed","failed"].forEach(t=>{let n=document.getElementById("tab_"+t);t===e?(n.classList.add("active","text-dark"),n.classList.remove("text-muted")):(n.classList.remove("active","text-dark"),n.classList.add("text-muted"))}),loadOrders(!0))}function loadOrders(e=!1){if(e){currentOffset=0,hasMoreData=!0,allOrders=[],document.getElementById("ordersList").innerHTML="";try{let t=JSON.parse(window.Android.querySql(DB_NAME,"SELECT SUM(net_sum) as total FROM orders WHERE status='completed'")),n=Number(t[0].total||0);document.getElementById("totalNetProfit").innerText=n.toLocaleString("ru-RU")+" ₽"}catch(a){console.error("Ошибка подсчета прибыли:",a)}}if(!hasMoreData||isLoading)return;isLoading=!0;let r="";"active"===currentFilter?r="status='active'":"completed"===currentFilter?r="status='completed'":"failed"===currentFilter&&(r="status IN ('refused', 'cancelled')");let s=r;searchQuery&&(s+=` AND (LOWER(address) LIKE '%${searchQuery}%' OR phone LIKE '%${searchQuery}%' OR LOWER(client_name) LIKE '%${searchQuery}%' OR LOWER(description) LIKE '%${searchQuery}%')`);let l=`SELECT * FROM orders WHERE ${s} ORDER BY timestamp DESC LIMIT 20 OFFSET ${currentOffset}`;try{let d=window.Android.querySql(DB_NAME,l),o=JSON.parse(d);o.length<20&&(hasMoreData=!1),allOrders=allOrders.concat(o),currentOffset+=o.length,renderOrdersChunk(o,"ordersList",e)}catch(i){console.error("Ошибка при загрузке:",i)}isLoading=!1}function renderOrdersChunk(e,t,n){let a=document.getElementById(t);if(n&&0===e.length){let r="Нет заказов";r="ordersList"===t?void 0!==searchQuery&&searchQuery?"По вашему запросу ничего не найдено":"active"===currentFilter?"Нет заказов в работе":"Нет завершенных заказов":"Нет завершенных заказов за выбранный период",a.innerHTML=`<p class="text-center text-muted mt-4">${r}</p>`;return}let s="";e.forEach(e=>{let t=new Date(e.timestamp).toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric"}),n="",a="";"completed"===e.status?(n='<span class="badge bg-success">Выполнен</span>',a="border-left-color: #198754; opacity: 0.9;"):"refused"===e.status?(n='<span class="badge bg-danger">Отказ</span>',a="border-left-color: #dc3545; opacity: 0.8;"):"cancelled"===e.status?(n='<span class="badge bg-secondary">Отмена</span>',a="border-left-color: #6c757d; opacity: 0.7;"):(n='<span class="badge bg-warning text-dark">В работе</span>',a="border-left-color: #ffc107;");let r=e.client_name?e.client_name.replace(/'/g,"&apos;"):"Не указан",l=e.phone?e.phone.replace(/'/g,"&apos;"):"Нет";s+=`
-            <div class="card order-card shadow-sm" style="${a}" onclick="openDetailScreen(${e.id})">
+    `);
+
+    // Миграции для старых данных
+    try { 
+        window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'active'`); 
+        window.Android.executeSql(DB_NAME, `UPDATE orders SET status = 'completed' WHERE is_completed = 1 AND status = 'active'`);
+    } catch(e) {}
+
+    try { 
+        window.Android.executeSql(DB_NAME, `ALTER TABLE orders ADD COLUMN closed_timestamp INTEGER`); 
+        window.Android.executeSql(DB_NAME, `UPDATE orders SET closed_timestamp = timestamp + 86400000 WHERE status != 'active' AND closed_timestamp IS NULL`);
+    } catch(e) {}
+    
+    updateGlobalCounters();
+    loadOrders(true);
+}
+
+// === СЧЕТЧИКИ ДЛЯ ВКЛАДОК НА ГЛАВНОЙ ===
+function updateGlobalCounters() {
+    try {
+        const res = JSON.parse(window.Android.querySql(DB_NAME, "SELECT status, COUNT(*) as c FROM orders GROUP BY status"));
+        let counts = { active: 0, completed: 0, refused: 0, cancelled: 0 };
+        res.forEach(r => { counts[r.status] = r.c; });
+        
+        document.getElementById('mc_active').innerText = counts.active;
+        document.getElementById('mc_completed').innerText = counts.completed;
+        document.getElementById('mc_refused').innerText = counts.refused;
+        document.getElementById('mc_cancelled').innerText = counts.cancelled;
+    } catch(e) {}
+}
+
+// === ПОИСК ===
+function handleSearch(query) {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        searchQuery = query.trim().toLowerCase().replace(/'/g, "''");
+        loadOrders(true);
+    }, 300);
+}
+
+// === ПАГИНАЦИЯ (ГЛАВНАЯ СТРАНИЦА) ===
+function setMainFilter(filterType) {
+    if (currentMainFilter === filterType) return;
+    currentMainFilter = filterType;
+    
+    ['active', 'completed', 'refused', 'cancelled'].forEach(f => {
+        const tab = document.getElementById('tab_' + f);
+        if (f === filterType) {
+            tab.classList.add('active', 'shadow-sm');
+        } else {
+            tab.classList.remove('active', 'shadow-sm');
+        }
+    });
+    loadOrders(true);
+}
+
+function loadOrders(reset = false) {
+    if (reset) {
+        currentOffset = 0;
+        hasMoreData = true;
+        allOrders = [];
+        document.getElementById('ordersList').innerHTML = '';
+        updateGlobalCounters();
+        
+        try {
+            const sumResult = JSON.parse(window.Android.querySql(DB_NAME, "SELECT SUM(net_sum) as total FROM orders WHERE status='completed'"));
+            document.getElementById('totalNetProfit').innerText = Number(sumResult[0].total || 0).toLocaleString('ru-RU') + ' ₽';
+        } catch (e) {}
+    }
+
+    if (!hasMoreData || isLoading) return;
+    isLoading = true;
+
+    let sqlCondition = `status='${currentMainFilter}'`;
+    if (searchQuery) {
+        sqlCondition += ` AND (LOWER(address) LIKE '%${searchQuery}%' OR phone LIKE '%${searchQuery}%' OR LOWER(client_name) LIKE '%${searchQuery}%' OR LOWER(description) LIKE '%${searchQuery}%')`;
+    }
+
+    const sql = `SELECT * FROM orders WHERE ${sqlCondition} ORDER BY timestamp DESC LIMIT ${LOAD_LIMIT} OFFSET ${currentOffset}`;
+    
+    try {
+        const jsonResult = window.Android.querySql(DB_NAME, sql);
+        const newOrders = JSON.parse(jsonResult);
+        
+        if (newOrders.length < LOAD_LIMIT) hasMoreData = false;
+        allOrders = allOrders.concat(newOrders);
+        currentOffset += newOrders.length;
+        
+        renderOrdersChunk(newOrders, 'ordersList', reset);
+    } catch (e) {}
+    
+    isLoading = false;
+}
+
+// === ПАГИНАЦИЯ (АНАЛИТИКА) ===
+function setStatsFilter(filterType) {
+    if (statsCurrentFilter === filterType) return;
+    statsCurrentFilter = filterType;
+    
+    ['all', 'completed', 'refused', 'cancelled', 'active'].forEach(f => {
+        const tab = document.getElementById('st_' + f);
+        if (f === filterType) tab.classList.add('active');
+        else tab.classList.remove('active');
+    });
+    loadStatsOrders(true);
+}
+
+function loadStatsOrders(reset = false) {
+    if (reset) {
+        statsOffset = 0;
+        statsHasMoreData = true;
+        allOrders = []; 
+        document.getElementById('statsOrdersList').innerHTML = '';
+    }
+
+    if (!statsHasMoreData || statsIsLoading) return;
+    statsIsLoading = true;
+
+    const range = getStatsDateRange();
+    
+    let filterSql = '';
+    if (statsCurrentFilter !== 'all') filterSql = ` AND status='${statsCurrentFilter}' `;
+    
+    const sql = `SELECT * FROM orders WHERE timestamp >= ${range.startTime} AND timestamp < ${range.endTime} ${filterSql} ORDER BY timestamp DESC LIMIT ${LOAD_LIMIT} OFFSET ${statsOffset}`;
+    
+    try {
+        const jsonResult = window.Android.querySql(DB_NAME, sql);
+        const newOrders = JSON.parse(jsonResult);
+        if (newOrders.length < LOAD_LIMIT) statsHasMoreData = false;
+        
+        allOrders = allOrders.concat(newOrders);
+        statsOffset += newOrders.length;
+        renderOrdersChunk(newOrders, 'statsOrdersList', reset);
+    } catch (e) {}
+    statsIsLoading = false;
+}
+
+function renderOrdersChunk(ordersChunk, containerId, isReset) {
+    const container = document.getElementById(containerId);
+
+    if (isReset && ordersChunk.length === 0) {
+        container.innerHTML = `<p class="text-center text-muted mt-4">Нет заказов</p>`;
+        return;
+    }
+
+    let htmlChunk = '';
+    ordersChunk.forEach(o => {
+        let dateHtml = new Date(o.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        
+        let statusBadge = '';
+        let cardColor = '';
+        if (o.status === 'completed') { 
+            statusBadge = '<span class="badge bg-success">Выполнен</span>'; cardColor = 'completed'; 
+            if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`;
+        }
+        else if (o.status === 'refused') { 
+            statusBadge = '<span class="badge bg-danger">Отказ</span>'; cardColor = 'refused'; 
+            if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`;
+        }
+        else if (o.status === 'cancelled') { 
+            statusBadge = '<span class="badge bg-secondary">Отмена</span>'; cardColor = 'cancelled'; 
+            if(o.closed_timestamp) dateHtml += `<br><span class="text-muted"><i class="fa-solid fa-flag-checkered ms-1"></i> ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + `</span>`;
+        }
+        else { statusBadge = '<span class="badge bg-warning text-dark">В работе</span>'; cardColor = ''; }
+        
+        const safeClient = o.client_name ? o.client_name.replace(/'/g, "&apos;") : 'Не указан';
+        const safePhone = o.phone ? o.phone.replace(/'/g, "&apos;") : 'Нет';
+
+        htmlChunk += `
+            <div class="card order-card shadow-sm ${cardColor}" onclick="openDetailScreen(${o.id})">
                 <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="fw-bold mb-0 text-truncate pe-2" style="max-width: 70%;">${e.address}</h6>
-                        <div class="text-end" style="font-size: 0.75rem;">${t}<br>${n}</div>
+                        <h6 class="fw-bold mb-0 text-truncate pe-2" style="max-width: 70%; line-height:1.2;">${o.address}</h6>
+                        <div class="text-end" style="font-size: 0.7rem;">${dateHtml}<br>${statusBadge}</div>
                     </div>
                     <div class="d-flex align-items-center mb-2" style="font-size: 0.9rem;">
-                        <i class="fa-solid fa-user text-muted me-2"></i> <span class="text-truncate" style="max-width: 100px;">${r}</span>
+                        <i class="fa-solid fa-user text-muted me-2"></i> <span class="text-truncate" style="max-width: 100px;">${safeClient}</span>
                         <span class="mx-2 text-muted">•</span> 
-                        <span class="text-primary"><i class="fa-solid fa-phone me-1"></i>${l}</span>
+                        <span class="text-primary"><i class="fa-solid fa-phone me-1"></i>${safePhone}</span>
                     </div>
                     <div class="financial-row d-flex justify-content-between text-center small mt-3">
-                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Общ</span><strong class="text-dark">${Number(e.total_sum||0).toLocaleString("ru-RU")}</strong></div>
-                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Расх</span><strong class="text-danger">${Number(e.parts_sum||0).toLocaleString("ru-RU")}</strong></div>
-                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Чист</span><strong class="text-success">${Number(e.net_sum||0).toLocaleString("ru-RU")}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Общ</span><strong class="text-dark">${Number(o.total_sum || 0).toLocaleString('ru-RU')}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Расх</span><strong class="text-danger">${Number(o.parts_sum || 0).toLocaleString('ru-RU')}</strong></div>
+                        <div><span class="text-muted d-block" style="font-size: 0.7rem;">Чист</span><strong class="text-success">${Number(o.net_sum || 0).toLocaleString('ru-RU')}</strong></div>
                     </div>
                 </div>
             </div>
-        `}),a.insertAdjacentHTML("beforeend",s)}function scrollToTop(){window.scrollTo({top:0,behavior:"smooth"})}function openDetailScreen(e){if(!(currentViewedOrder=allOrders.find(t=>t.id===e)))return;let t=currentViewedOrder;document.getElementById("detAddress").innerText=t.address,document.getElementById("detClient").innerText=t.client_name||"Не указан",document.getElementById("detPhone").innerText=t.phone||"Не указан",document.getElementById("detPhoneBtn").href=t.phone?`tel:${t.phone}`:"#",document.getElementById("detDesc").innerText=t.description||"Нет описания",document.getElementById("detTotal").innerText=Number(t.total_sum||0).toLocaleString("ru-RU")+" ₽",document.getElementById("detParts").innerText=Number(t.parts_sum||0).toLocaleString("ru-RU")+" ₽",document.getElementById("detNet").innerText=Number(t.net_sum||0).toLocaleString("ru-RU")+" ₽",document.getElementById("detDate").innerText=new Date(t.timestamp).toLocaleDateString("ru-RU");let n="";n="completed"===t.status?'<span class="badge bg-success">Выполнен</span>':"refused"===t.status?'<span class="badge bg-danger">Отказ</span>':"cancelled"===t.status?'<span class="badge bg-secondary">Отмена</span>':'<span class="badge bg-warning text-dark">В работе</span>',document.getElementById("detStatus").innerHTML=n,document.getElementById("mainScreen").classList.add("d-none"),document.getElementById("detailScreen").classList.remove("d-none"),window.scrollTo(0,0),history.pushState({page:"detail"},"Detail","#detail")}function closeDetailScreen(){history.back()}function showOrderModal(){document.getElementById("orderId").value="",document.getElementById("orderAddress").value="",document.getElementById("orderClient").value="",document.getElementById("orderPhone").value="",document.getElementById("orderDesc").value="",document.getElementById("orderTotal").value="",document.getElementById("orderParts").value="",document.getElementById("orderNet").innerText="0 ₽",document.getElementById("orderStatus").value="active",orderModal.show(),history.pushState({page:"modal"},"Modal","#modal")}function openEditModal(){try{if(!currentViewedOrder)return;let e=currentViewedOrder;document.getElementById("orderId").value=e.id||"",document.getElementById("orderAddress").value=e.address||"",document.getElementById("orderClient").value=e.client_name||"",document.getElementById("orderPhone").value=e.phone||"",document.getElementById("orderDesc").value=e.description||"",document.getElementById("orderTotal").value=e.total_sum||"",document.getElementById("orderParts").value=e.parts_sum||"",document.getElementById("orderStatus").value=e.status||"active",calcNet(),orderModal.show();try{history.pushState({page:"modal"},"Modal","#modal")}catch(t){}}catch(n){alert("Ошибка: "+n.message)}}function calcNet(){let e=parseFloat(document.getElementById("orderTotal").value)||0,t=parseFloat(document.getElementById("orderParts").value)||0;document.getElementById("orderNet").innerText=e-t+" ₽"}function deleteOrder(){if(!currentViewedOrder)return;let e=currentViewedOrder.id;confirm("Вы уверены? Будет удален и сам заказ, и все связанные транзакции.")&&(window.Android.executeSql(DB_NAME,`DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${e}]%'`),window.Android.executeSql(DB_NAME,`DELETE FROM orders WHERE id=${e}`),loadOrders(!0),history.back())}function saveOrder(){let e=document.getElementById("orderId").value,t=e?parseInt(e):Date.now(),n=document.getElementById("orderAddress").value.replace(/'/g,"''"),a=document.getElementById("orderClient").value.replace(/'/g,"''"),r=document.getElementById("orderPhone").value.replace(/'/g,"''"),s=document.getElementById("orderDesc").value.replace(/'/g,"''"),l=parseFloat(document.getElementById("orderTotal").value)||0,d=parseFloat(document.getElementById("orderParts").value)||0,o=l-d,i=document.getElementById("orderStatus").value,c="completed"===i?1:0,g=e?Date.now():t,m=e?`UPDATE orders SET address='${n}', client_name='${a}', phone='${r}', description='${s}', total_sum=${l}, parts_sum=${d}, net_sum=${o}, status='${i}', is_completed=${c} WHERE id=${t}`:`INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, is_completed) VALUES (${t}, '${n}', '${a}', '${r}', '${s}', ${l}, ${d}, ${o}, ${g}, '${i}', ${c})`;window.Android.executeSql(DB_NAME,m),window.Android.executeSql(DB_NAME,`DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${t}]%'`),"completed"===i&&(l>0&&window.Android.executeSql(DB_NAME,`INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${l}, 'Услуги ремонта', '[CRM-${t}] ${n}', ${Date.now()}, 'crm')`),d>0&&window.Android.executeSql(DB_NAME,`INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${d}, 'Бизнес (Запчасти)', '[CRM-${t}] Запчасти: ${n}', ${Date.now()+1e3}, 'crm')`)),orderModal.hide(),loadOrders(!0),document.getElementById("detailScreen").classList.contains("d-none")||closeDetailScreen()}function handleContactSearch(e){let t=document.getElementById("contactSuggestions");if(!e||e.length<2){t.style.display="none";return}if(window.Android&&window.Android.searchContacts){let n=JSON.parse(window.Android.searchContacts(e));if(0===n.length){t.style.display="none";return}t.innerHTML="",n.forEach(e=>{let n=e.name.replace(/'/g,"\\'"),a=e.phone.replace(/'/g,"\\'");t.innerHTML+=`
-                <li><a class="dropdown-item py-2" href="#" onclick="selectContact('${n}', '${a}'); return false;">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="fw-bold text-truncate" style="max-width: 60%;">${e.name}</span>
-                        <span class="small text-muted">${e.phone}</span>
-                    </div>
-                </a></li>`}),t.style.display="block"}}function selectContact(e,t){document.getElementById("orderClient").value=e,document.getElementById("orderPhone").value=t,document.getElementById("contactSuggestions").style.display="none"}function handleAddressSearch(e){let t=document.getElementById("addressSuggestions");if(!e||e.trim().length<2){t.style.display="none";return}let n=e.toLowerCase().trim().split(/\s+/),a=("undefined"!=typeof SARATOV_STREETS?SARATOV_STREETS:[]).filter(e=>{let t=e.toLowerCase().replace(/[-.]/g," ");return n.every(e=>t.includes(e))}).slice(0,10);if(0===a.length){t.style.display="none";return}t.innerHTML="",a.forEach(e=>{let n=e.replace(/'/g,"\\'");t.innerHTML+=`
-            <li><a class="dropdown-item py-2 text-wrap" href="#" onclick="selectAddress('${n}'); return false;">
-                <i class="fa-solid fa-location-dot text-muted me-2"></i><span>${e}</span>
-            </a></li>`}),t.style.display="block"}function selectAddress(e){let t=document.getElementById("orderAddress");t.value=e+", д. ",document.getElementById("addressSuggestions").style.display="none",t.focus()}function openStatsScreen(){document.getElementById("mainScreen").classList.add("d-none"),document.getElementById("statsScreen").classList.remove("d-none");let e=document.getElementById("statsYear");if(0===e.options.length){let t=new Date().getFullYear();for(let n=t;n>=2023;n--)e.innerHTML+=`<option value="${n}">${n}</option>`}document.getElementById("statsMonth").value=new Date().getMonth(),window.scrollTo(0,0),history.pushState({page:"stats"},"Stats","#stats"),triggerCalculateStats()}function closeStatsScreen(){history.back()}window.addEventListener("popstate",function(e){let t=e.state;document.getElementById("orderModal").classList.contains("show")&&orderModal.hide(),t&&t.page?"detail"===t.page?(document.getElementById("mainScreen").classList.add("d-none"),document.getElementById("statsScreen").classList.add("d-none"),document.getElementById("detailScreen").classList.remove("d-none")):"stats"===t.page&&(document.getElementById("mainScreen").classList.add("d-none"),document.getElementById("detailScreen").classList.add("d-none"),document.getElementById("statsScreen").classList.remove("d-none")):(document.getElementById("detailScreen").classList.add("d-none"),document.getElementById("statsScreen").classList.add("d-none"),document.getElementById("mainScreen").classList.remove("d-none"),currentViewedOrder=null)}),document.getElementById("orderModal").addEventListener("hide.bs.modal",function(e){history.state&&"modal"===history.state.page&&history.back()}),window.addEventListener("scroll",()=>{let e=document.getElementById("scrollTopBtn"),t=document.querySelector(".fab");window.scrollY>300?(e&&e.classList.add("visible"),t&&t.classList.add("fab-hidden")):(e&&e.classList.remove("visible"),t&&t.classList.remove("fab-hidden")),window.innerHeight+window.scrollY>=document.body.offsetHeight-300&&(document.getElementById("mainScreen").classList.contains("d-none")?document.getElementById("statsScreen").classList.contains("d-none")||loadStatsOrders(!1):loadOrders(!1))}),document.addEventListener("click",function(e){if(!e.target.closest("#contactSuggestions")&&!e.target.closest("#orderClient")&&!e.target.closest("#orderPhone")){let t=document.getElementById("contactSuggestions");t&&(t.style.display="none")}if(!e.target.closest("#addressSuggestions")&&!e.target.closest("#orderAddress")){let n=document.getElementById("addressSuggestions");n&&(n.style.display="none")}});let rangeModal=null,calCurrentDate=new Date,rangeStart=null,rangeEnd=null,dbMinTs=null,dbMaxTs=null,finalRangeStart=null,finalRangeEnd=null;function togglePeriodSelector(){let e=document.getElementById("statsPeriod").value,t=document.getElementById("customMonthSelector"),n=document.getElementById("rangeSelectedInfo");t.classList.add("d-none"),n&&n.classList.add("d-none"),"custom"===e?(t.classList.remove("d-none"),triggerCalculateStats()):"range"===e?(n&&n.classList.remove("d-none"),openDateRangeModal()):triggerCalculateStats()}function getStatsDateRange(){let e=document.getElementById("statsPeriod").value,t=new Date,n=0,a=41024448e5,r=!0,s="daily";if("today"===e)n=new Date(t.getFullYear(),t.getMonth(),t.getDate()).getTime(),r=!1;else if("24h"===e)n=t.getTime()-864e5,r=!1;else if("week"===e){let l=t.getDay()||7;n=new Date(t.getFullYear(),t.getMonth(),t.getDate()-l+1).getTime()}else if("month"===e)n=new Date(t.getFullYear(),t.getMonth(),1).getTime();else if("lastMonth"===e)n=new Date(t.getFullYear(),t.getMonth()-1,1).getTime(),a=new Date(t.getFullYear(),t.getMonth(),1).getTime();else if("year"===e)n=new Date(t.getFullYear(),0,1).getTime(),s="monthly";else if("custom"===e){let d=parseInt(document.getElementById("statsMonth").value),o=parseInt(document.getElementById("statsYear").value);n=new Date(o,d,1).getTime(),a=new Date(o,d+1,1).getTime()}else"all"===e?s="monthly":"range"===e&&(n=finalRangeStart||0,(a=finalRangeEnd||41024448e5)-n>5184e6&&(s="monthly"));return{startTime:n,endTime:a,showLineChart:r,chartType:s}}function openDateRangeModal(){rangeModal||(rangeModal=new bootstrap.Modal(document.getElementById("dateRangeModal")));try{let e=JSON.parse(window.Android.querySql(DB_NAME,"SELECT MIN(timestamp) as minTs, MAX(timestamp) as maxTs FROM orders"));e[0]&&e[0].minTs?(dbMinTs=new Date(e[0].minTs).setHours(0,0,0,0),dbMaxTs=new Date(e[0].maxTs).setHours(23,59,59,999)):(dbMinTs=new Date().setHours(0,0,0,0),dbMaxTs=new Date().setHours(23,59,59,999))}catch(t){dbMinTs=new Date().setHours(0,0,0,0),dbMaxTs=new Date().setHours(23,59,59,999)}rangeStart=null,rangeEnd=null,document.getElementById("btnApplyRange").disabled=!0,calCurrentDate=new Date(dbMaxTs),renderCalendar(),rangeModal.show()}function changeCalMonth(e){calCurrentDate.setMonth(calCurrentDate.getMonth()+e),renderCalendar()}function renderCalendar(){let e=calCurrentDate.getFullYear(),t=calCurrentDate.getMonth();document.getElementById("calMonthYear").innerText=new Date(e,t).toLocaleString("ru-RU",{month:"long",year:"numeric"});let n=new Date(e,t,1).getDay(),a=new Date(e,t+1,0).getDate(),r=0===n?6:n-1,s="";for(let l=0;l<r;l++)s+='<div class="cal-day disabled"></div>';for(let d=1;d<=a;d++){let o=new Date(e,t,d).setHours(0,0,0,0),i=new Date(e,t,d).setHours(23,59,59,999)<dbMinTs||o>dbMaxTs,c="cal-day";i&&(c+=" disabled"),rangeStart&&o===rangeStart?c+=" selected":rangeEnd&&o===rangeEnd?c+=" selected":rangeStart&&rangeEnd&&o>rangeStart&&o<rangeEnd&&(c+=" in-range"),s+=`<div class="${c}" ${i?"":`onclick="clickCalDay(${o})"`}>${d}</div>`}document.getElementById("calDays").innerHTML=s;let g="Выберите начальную дату";rangeStart&&!rangeEnd&&(g=`Начало: ${new Date(rangeStart).toLocaleDateString("ru-RU")}. Выберите конец.`),rangeStart&&rangeEnd&&(g=`${new Date(rangeStart).toLocaleDateString("ru-RU")} - ${new Date(rangeEnd).toLocaleDateString("ru-RU")}`),document.getElementById("calSelectedText").innerText=g}function clickCalDay(e){!rangeStart||rangeStart&&rangeEnd?(rangeStart=e,rangeEnd=null,document.getElementById("btnApplyRange").disabled=!0):e<rangeStart?(rangeStart=e,rangeEnd=null):(rangeEnd=e,document.getElementById("btnApplyRange").disabled=!1),renderCalendar()}function applyDateRange(){if(!rangeStart||!rangeEnd)return;finalRangeStart=rangeStart,finalRangeEnd=rangeEnd+828e5+354e4+59e3;let e=new Date(finalRangeStart).toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"2-digit"}),t=new Date(finalRangeEnd).toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"2-digit"});document.getElementById("rangeBtnText").innerText=`${e} - ${t}`,rangeModal.hide(),triggerCalculateStats()}function cancelDateRange(){finalRangeStart&&finalRangeEnd||(document.getElementById("statsPeriod").value="month",togglePeriodSelector())}function triggerCalculateStats(){document.getElementById("loadingOverlay").classList.remove("d-none"),setTimeout(()=>{calculateStats(),document.getElementById("loadingOverlay").classList.add("d-none")},50)}function loadStatsOrders(e=!1){if(e&&(statsOffset=0,statsHasMoreData=!0,allOrders=[],document.getElementById("statsOrdersList").innerHTML=""),!statsHasMoreData||statsIsLoading)return;statsIsLoading=!0;let t=getStatsDateRange(),n=`SELECT * FROM orders WHERE timestamp >= ${t.startTime} AND timestamp < ${t.endTime} ORDER BY timestamp DESC LIMIT 20 OFFSET ${statsOffset}`;try{let a=window.Android.querySql(DB_NAME,n),r=JSON.parse(a);r.length<20&&(statsHasMoreData=!1),allOrders=allOrders.concat(r),statsOffset+=r.length,renderOrdersChunk(r,"statsOrdersList",e)}catch(s){console.error("Ошибка при загрузке стат-заказов:",s)}statsIsLoading=!1}function calculateStats(){let e=getStatsDateRange(),t=`SELECT * FROM orders WHERE timestamp >= ${e.startTime} AND timestamp < ${e.endTime} ORDER BY timestamp ASC`,n=`SELECT SUM(amount) as ad_total FROM transactions WHERE type='expense' AND category='Реклама' AND timestamp >= ${e.startTime} AND timestamp < ${e.endTime}`;try{let a=JSON.parse(window.Android.querySql(DB_NAME,t)),r=JSON.parse(window.Android.querySql(DB_NAME,n)),s=Number(r[0].ad_total||0),l=0,d=0,o=0,i=a.length,c=0,g=0,m=0,u={};a.forEach(t=>{if("completed"===t.status){l++,c+=parseFloat(t.total_sum||0),g+=parseFloat(t.parts_sum||0),m+=parseFloat(t.net_sum||0);let n=new Date(t.timestamp),a="daily"===e.chartType?n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"):n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0");u[a]||(u[a]={period:a,total:0,parts:0,net:0}),u[a].total+=parseFloat(t.total_sum||0),u[a].parts+=parseFloat(t.parts_sum||0),u[a].net+=parseFloat(t.net_sum||0)}else"refused"===t.status||"cancelled"===t.status?d++:o++});let E=i>0?Math.round(l/i*100):0,$=i>0?Math.round(d/i*100):0,y=i>0?100-E-$:0;document.getElementById("statAllLeads").innerText=i.toLocaleString("ru-RU"),document.getElementById("statCPL").innerText=Math.round(i>0?s/i:0).toLocaleString("ru-RU")+" ₽",document.getElementById("pbCompleted").style.width=E+"%",document.getElementById("pbCompleted").innerText=E>5?E+"%":"",document.getElementById("pbFailed").style.width=$+"%",document.getElementById("pbFailed").innerText=$>5?$+"%":"",document.getElementById("pbActive").style.width=y+"%",document.getElementById("pbActive").innerText=y>5?y+"%":"";let p=l>0?m/l:0;document.getElementById("statCount").innerText=l.toLocaleString("ru-RU"),document.getElementById("statTotal").innerText=Number(c).toLocaleString("ru-RU")+" ₽",document.getElementById("statParts").innerText=Number(g).toLocaleString("ru-RU")+" ₽",document.getElementById("statNet").innerText=Number(m).toLocaleString("ru-RU")+" ₽",document.getElementById("statAvg").innerText=Math.round(p).toLocaleString("ru-RU")+" ₽";let f=document.getElementById("crmChartContainer");if(e.showLineChart&&0!==Object.keys(u).length){f.classList.remove("d-none");let S=Object.values(u);document.getElementById("chartTitle").innerText="daily"===e.chartType?"Динамика прибыли по дням":"Динамика прибыли по месяцам",document.getElementById("crmChart").innerHTML="",window.Morris&&new Morris.Line({element:"crmChart",data:S,xkey:"period",ykeys:["total","net","parts"],labels:["Выручка","Чистая","Расход"],lineColors:["#0d6efd","#198754","#dc3545"],hideHover:"auto",resize:!0,parseTime:!1,hoverCallback:function(e,t,n,a){return`<div class="p-2 fw-bold bg-white shadow-sm border rounded" style="z-index:1000">
-                                    <div class="mb-1 text-dark border-bottom pb-1">${a.period}</div>
-                                    <div style="color: #0d6efd">Выручка: ${Number(a.total).toLocaleString("ru-RU")} ₽</div>
-                                    <div style="color: #198754">Чистая: ${Number(a.net).toLocaleString("ru-RU")} ₽</div>
-                                    <div style="color: #dc3545">Расход: ${Number(a.parts).toLocaleString("ru-RU")} ₽</div>
-                                </div>`}})}else f.classList.add("d-none");loadStatsOrders(!0)}catch(T){console.error("Ошибка аналитики:",T)}}function generateTestData(){if(!confirm("Это добавит 10 000 записей. Продолжить?"))return;let e=document.getElementById("btnGenerate");e.disabled=!0,e.innerText="Идет генерация...";let t=["Александр","Елена","Максим","Ольга","Иван","Анна","Сергей","Наталья"],n=0;!function a(){let r=[];for(let s=0;s<500;s++){let l=Date.now()+n+s,d="undefined"!=typeof SARATOV_STREETS&&SARATOV_STREETS.length>0?SARATOV_STREETS[Math.floor(Math.random()*SARATOV_STREETS.length)]:"ул. Тестовая",o=d+", д. "+Math.floor(150*Math.random()+1),i=t[Math.floor(Math.random()*t.length)],c="89"+Math.floor(1e8+9e8*Math.random()),g=100*Math.floor(50*Math.random())+1e3,m=100*Math.floor(15*Math.random()),u=Math.random(),E="completed";u<.2?E="active":u<.3?E="refused":u<.4&&(E="cancelled");let $=Date.now()-Math.floor(31536e6*Math.random());r.push(`(${l}, '${o}', '${i}', '${c}', 'Тестовый', ${g}, ${m}, ${g-m}, ${$}, '${E}')`)}window.Android.executeSql(DB_NAME,"INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status) VALUES "+r.join(", ")),(n+=500)<1e4?(e.innerText=`Добавлено: ${n} / 10000`,setTimeout(a,20)):(e.disabled=!1,e.innerText="Сгенерировать 10 000 заказов",alert("Успешно добавлено!"),loadOrders(!0),document.getElementById("statsScreen").classList.contains("d-none")||triggerCalculateStats())}()}function clearDatabase(){confirm("Удалить только тестовые заказы? Ваши реальные заказы останутся в безопасности.")&&(window.Android.executeSql(DB_NAME,"DELETE FROM orders WHERE description = 'Тестовый'"),loadOrders(!0),document.getElementById("statsScreen").classList.contains("d-none")||triggerCalculateStats(),alert("Тестовые данные успешно удалены!"))}window.addEventListener("DOMContentLoaded",initDb);
+        `;
+    });
+    container.insertAdjacentHTML('beforeend', htmlChunk);
+}
+
+// === СКРОЛЛ И КНОПКА ===
+window.addEventListener('scroll', () => {
+    const scrollTopBtn = document.getElementById('scrollTopBtn');
+    const mainFabBtn = document.querySelector('.fab'); 
+    
+    if (window.scrollY > 300) {
+        if(scrollTopBtn) scrollTopBtn.classList.add('visible');      
+        if(mainFabBtn) mainFabBtn.classList.add('fab-hidden'); 
+    } else {
+        if(scrollTopBtn) scrollTopBtn.classList.remove('visible');   
+        if(mainFabBtn) mainFabBtn.classList.remove('fab-hidden'); 
+    }
+
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
+        if (!document.getElementById('mainScreen').classList.contains('d-none')) {
+            loadOrders(false);
+        } else if (!document.getElementById('statsScreen').classList.contains('d-none')) {
+            loadStatsOrders(false);
+        }
+    }
+});
+function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+// === ЭКРАНЫ И МОДАЛКИ ===
+function openDetailScreen(orderId) {
+    currentViewedOrder = allOrders.find(o => o.id === orderId);
+    if (!currentViewedOrder) return;
+    const o = currentViewedOrder;
+
+    document.getElementById('detAddress').innerText = o.address;
+    document.getElementById('detClient').innerText = o.client_name || 'Не указан';
+    document.getElementById('detPhone').innerText = o.phone || 'Не указан';
+    document.getElementById('detPhoneBtn').href = o.phone ? `tel:${o.phone}` : '#';
+    document.getElementById('detDesc').innerText = o.description || 'Нет описания';
+    document.getElementById('detTotal').innerText = Number(o.total_sum || 0).toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('detParts').innerText = Number(o.parts_sum || 0).toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('detNet').innerText = Number(o.net_sum || 0).toLocaleString('ru-RU') + ' ₽';
+    
+    let dStr = "Создан: " + new Date(o.timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    if (o.status !== 'active' && o.closed_timestamp) dStr += `<br>Закрыт: ` + new Date(o.closed_timestamp).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    document.getElementById('detDate').innerHTML = dStr;
+    
+    let statusHtml = '';
+    if (o.status === 'completed') statusHtml = '<span class="badge bg-success">Выполнен</span>';
+    else if (o.status === 'refused') statusHtml = '<span class="badge bg-danger">Отказ</span>';
+    else if (o.status === 'cancelled') statusHtml = '<span class="badge bg-secondary">Отмена</span>';
+    else statusHtml = '<span class="badge bg-warning text-dark">В работе</span>';
+    document.getElementById('detStatus').innerHTML = statusHtml;
+
+    document.getElementById('mainScreen').classList.add('d-none');
+    document.getElementById('detailScreen').classList.remove('d-none');
+    window.scrollTo(0, 0);
+    history.pushState({ page: 'detail' }, "Detail", "#detail");
+}
+
+function closeDetailScreen() { history.back(); }
+
+function showOrderModal() {
+    document.getElementById('orderId').value = '';
+    document.getElementById('orderAddress').value = '';
+    document.getElementById('orderClient').value = '';
+    document.getElementById('orderPhone').value = '';
+    document.getElementById('orderDesc').value = '';
+    document.getElementById('orderTotal').value = '';
+    document.getElementById('orderParts').value = '';
+    document.getElementById('orderNet').innerText = '0 ₽';
+    document.getElementById('orderStatus').value = 'active';
+    
+    orderModal.show();
+    history.pushState({ page: 'modal' }, "Modal", "#modal");
+}
+
+function openEditModal() {
+    try {
+        if (!currentViewedOrder) return;
+        const o = currentViewedOrder;
+        document.getElementById('orderId').value = o.id || '';
+        document.getElementById('orderAddress').value = o.address || '';
+        document.getElementById('orderClient').value = o.client_name || '';
+        document.getElementById('orderPhone').value = o.phone || '';
+        document.getElementById('orderDesc').value = o.description || '';
+        document.getElementById('orderTotal').value = o.total_sum || '';
+        document.getElementById('orderParts').value = o.parts_sum || '';
+        document.getElementById('orderStatus').value = o.status || 'active';
+        calcNet();
+        orderModal.show();
+        try { history.pushState({ page: 'modal' }, "Modal", "#modal"); } catch(e) {}
+    } catch (e) {}
+}
+
+function calcNet() {
+    const total = parseFloat(document.getElementById('orderTotal').value) || 0;
+    const parts = parseFloat(document.getElementById('orderParts').value) || 0;
+    document.getElementById('orderNet').innerText = (total - parts) + ' ₽';
+}
+
+function deleteOrder() {
+    if (!currentViewedOrder) return;
+    const orderId = currentViewedOrder.id;
+    if (confirm("Удалить заказ и связанные транзакции?")) {
+        window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
+        window.Android.executeSql(DB_NAME, `DELETE FROM orders WHERE id=${orderId}`);
+        updateGlobalCounters();
+        loadOrders(true); 
+        history.back(); 
+    }
+}
+
+function saveOrder() {
+    const idInput = document.getElementById('orderId').value;
+    const orderId = idInput ? parseInt(idInput) : Date.now();
+    const address = document.getElementById('orderAddress').value.replace(/'/g, "''");
+    const client = document.getElementById('orderClient').value.replace(/'/g, "''");
+    const phone = document.getElementById('orderPhone').value.replace(/'/g, "''");
+    const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
+    const total = parseFloat(document.getElementById('orderTotal').value) || 0;
+    const parts = parseFloat(document.getElementById('orderParts').value) || 0;
+    const net = total - parts;
+    const status = document.getElementById('orderStatus').value;
+
+    let closedTs = 'NULL';
+    if (status !== 'active') {
+        if (currentViewedOrder && currentViewedOrder.status !== 'active' && currentViewedOrder.closed_timestamp) {
+            closedTs = currentViewedOrder.closed_timestamp; // Оставляем старую дату закрытия если статус не менялся на активный
+        } else {
+            closedTs = Date.now(); // Создаем новую дату закрытия
+        }
+    }
+
+    const ts = idInput ? (currentViewedOrder ? currentViewedOrder.timestamp : Date.now()) : orderId;
+
+    let sql = idInput 
+        ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, status='${status}', closed_timestamp=${closedTs} WHERE id=${orderId}`
+        : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, '${status}', ${closedTs})`;
+    
+    window.Android.executeSql(DB_NAME, sql);
+    window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
+
+    if (status === 'completed') {
+        if (total > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${total}, 'Услуги ремонта', '[CRM-${orderId}] ${address}', ${Date.now()}, 'crm')`);
+        if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
+    }
+
+    orderModal.hide();
+    updateGlobalCounters();
+    
+    if (!document.getElementById('mainScreen').classList.contains('d-none')) {
+        loadOrders(true); 
+    } else if (!document.getElementById('statsScreen').classList.contains('d-none')) {
+        triggerCalculateStats();
+    }
+
+    if (!document.getElementById('detailScreen').classList.contains('d-none')) closeDetailScreen();
+}
+
+// === ПОИСК ПОДСКАЗОК ===
+function handleContactSearch(query) {
+    const dropdown = document.getElementById('contactSuggestions');
+    if (!query || query.length < 2) { dropdown.style.display = 'none'; return; }
+    if (window.Android && window.Android.searchContacts) {
+        const contacts = JSON.parse(window.Android.searchContacts(query));
+        if (contacts.length === 0) { dropdown.style.display = 'none'; return; }
+        dropdown.innerHTML = '';
+        contacts.forEach(c => {
+            const safeName = c.name.replace(/'/g, "\\'"); const safePhone = c.phone.replace(/'/g, "\\'");
+            dropdown.innerHTML += `<li><a class="dropdown-item py-2" href="#" onclick="selectContact('${safeName}', '${safePhone}'); return false;"><div class="d-flex justify-content-between align-items-center"><span class="fw-bold text-truncate" style="max-width: 60%;">${c.name}</span><span class="small text-muted">${c.phone}</span></div></a></li>`;
+        });
+        dropdown.style.display = 'block';
+    }
+}
+function selectContact(name, phone) { document.getElementById('orderClient').value = name; document.getElementById('orderPhone').value = phone; document.getElementById('contactSuggestions').style.display = 'none'; }
+function handleAddressSearch(query) {
+    const dropdown = document.getElementById('addressSuggestions');
+    if (!query || query.trim().length < 2) { dropdown.style.display = 'none'; return; }
+    const searchTerms = query.toLowerCase().trim().split(/\s+/);
+    const matches = (typeof SARATOV_STREETS !== 'undefined' ? SARATOV_STREETS : []).filter(street => {
+        const normalizedStreet = street.toLowerCase().replace(/[-.]/g, ' '); return searchTerms.every(term => normalizedStreet.includes(term));
+    }).slice(0, 10);
+    if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+    dropdown.innerHTML = '';
+    matches.forEach(street => {
+        const safeStreet = street.replace(/'/g, "\\'"); 
+        dropdown.innerHTML += `<li><a class="dropdown-item py-2 text-wrap" href="#" onclick="selectAddress('${safeStreet}'); return false;"><i class="fa-solid fa-location-dot text-muted me-2"></i><span>${street}</span></a></li>`;
+    });
+    dropdown.style.display = 'block';
+}
+function selectAddress(street) { document.getElementById('orderAddress').value = street + ', д. '; document.getElementById('addressSuggestions').style.display = 'none'; document.getElementById('orderAddress').focus(); }
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#contactSuggestions') && !e.target.closest('#orderClient') && !e.target.closest('#orderPhone')) { const el = document.getElementById('contactSuggestions'); if(el) el.style.display = 'none'; }
+    if (!e.target.closest('#addressSuggestions') && !e.target.closest('#orderAddress')) { const el = document.getElementById('addressSuggestions'); if(el) el.style.display = 'none'; }
+});
+
+
+// === АНАЛИТИКА ===
+function openStatsScreen() {
+    document.getElementById('mainScreen').classList.add('d-none');
+    document.getElementById('statsScreen').classList.remove('d-none');
+    
+    const yearSelect = document.getElementById('statsYear');
+    if (yearSelect.options.length === 0) {
+        for (let y = new Date().getFullYear(); y >= 2023; y--) yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+    }
+    document.getElementById('statsMonth').value = new Date().getMonth();
+    window.scrollTo(0, 0);
+    history.pushState({ page: 'stats' }, "Stats", "#stats");
+    triggerCalculateStats();
+}
+
+function closeStatsScreen() { history.back(); }
+
+let rangeModal = null; let calCurrentDate = new Date(); let rangeStart = null; let rangeEnd = null; let dbMinTs = null; let dbMaxTs = null; let finalRangeStart = null; let finalRangeEnd = null;
+
+function togglePeriodSelector() {
+    const period = document.getElementById('statsPeriod').value;
+    const customBox = document.getElementById('customMonthSelector');
+    const rangeInfo = document.getElementById('rangeSelectedInfo');
+    
+    customBox.classList.add('d-none');
+    if (rangeInfo) rangeInfo.classList.add('d-none');
+    
+    if (period === 'custom') { customBox.classList.remove('d-none'); triggerCalculateStats(); } 
+    else if (period === 'range') { if (rangeInfo) rangeInfo.classList.remove('d-none'); openDateRangeModal(); } 
+    else { triggerCalculateStats(); }
+}
+
+function getStatsDateRange() {
+    const period = document.getElementById('statsPeriod').value;
+    const now = new Date();
+    let startTime = 0, endTime = 4102444800000;
+    let showLineChart = true; let chartType = 'daily'; 
+
+    if (period === 'today') { startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); showLineChart = false; } 
+    else if (period === '24h') { startTime = now.getTime() - (24 * 60 * 60 * 1000); showLineChart = false; } 
+    else if (period === 'week') { const day = now.getDay() || 7; startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime(); } 
+    else if (period === 'month') { startTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); } 
+    else if (period === 'lastMonth') { startTime = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime(); endTime = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); } 
+    else if (period === 'year') { startTime = new Date(now.getFullYear(), 0, 1).getTime(); chartType = 'monthly'; } 
+    else if (period === 'custom') { const sm = parseInt(document.getElementById('statsMonth').value); const sy = parseInt(document.getElementById('statsYear').value); startTime = new Date(sy, sm, 1).getTime(); endTime = new Date(sy, sm + 1, 1).getTime(); } 
+    else if (period === 'all') { chartType = 'monthly'; } 
+    else if (period === 'range') {
+        startTime = finalRangeStart || 0; endTime = finalRangeEnd || 4102444800000;
+        if ((endTime - startTime) > 60 * 24 * 60 * 60 * 1000) chartType = 'monthly';
+    }
+    return { startTime, endTime, showLineChart, chartType };
+}
+
+function openDateRangeModal() {
+    if (!rangeModal) rangeModal = new bootstrap.Modal(document.getElementById('dateRangeModal'));
+    try {
+        const res = JSON.parse(window.Android.querySql(DB_NAME, "SELECT MIN(timestamp) as minTs, MAX(timestamp) as maxTs FROM orders"));
+        if (res[0] && res[0].minTs) { dbMinTs = new Date(res[0].minTs).setHours(0,0,0,0); dbMaxTs = new Date(res[0].maxTs).setHours(23,59,59,999); } 
+        else { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
+    } catch(e) { dbMinTs = new Date().setHours(0,0,0,0); dbMaxTs = new Date().setHours(23,59,59,999); }
+
+    rangeStart = null; rangeEnd = null; document.getElementById('btnApplyRange').disabled = true; calCurrentDate = new Date(dbMaxTs); 
+    renderCalendar(); rangeModal.show();
+}
+function changeCalMonth(dir) { calCurrentDate.setMonth(calCurrentDate.getMonth() + dir); renderCalendar(); }
+function renderCalendar() {
+    const year = calCurrentDate.getFullYear(); const month = calCurrentDate.getMonth();
+    document.getElementById('calMonthYear').innerText = new Date(year, month).toLocaleString('ru-RU', {month: 'long', year: 'numeric'});
+    const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let offset = firstDay === 0 ? 6 : firstDay - 1; 
+
+    let html = '';
+    for(let i = 0; i < offset; i++) html += `<div class="cal-day disabled"></div>`;
+    for(let d = 1; d <= daysInMonth; d++) {
+        let tsStart = new Date(year, month, d).setHours(0,0,0,0); let tsEnd = new Date(year, month, d).setHours(23,59,59,999);
+        let isOut = (tsEnd < dbMinTs || tsStart > dbMaxTs); let cls = 'cal-day';
+        if (isOut) cls += ' disabled';
+        if (rangeStart && tsStart === rangeStart) cls += ' selected'; else if (rangeEnd && tsStart === rangeEnd) cls += ' selected'; else if (rangeStart && rangeEnd && tsStart > rangeStart && tsStart < rangeEnd) cls += ' in-range';
+        html += `<div class="${cls}" ${isOut ? '' : `onclick="clickCalDay(${tsStart})"`}>${d}</div>`;
+    }
+    document.getElementById('calDays').innerHTML = html;
+    let text = 'Выберите начальную дату';
+    if (rangeStart && !rangeEnd) text = `Начало: ${new Date(rangeStart).toLocaleDateString('ru-RU')}. Выберите конец.`;
+    if (rangeStart && rangeEnd) text = `${new Date(rangeStart).toLocaleDateString('ru-RU')} - ${new Date(rangeEnd).toLocaleDateString('ru-RU')}`;
+    document.getElementById('calSelectedText').innerText = text;
+}
+function clickCalDay(ts) {
+    if (!rangeStart || (rangeStart && rangeEnd)) { rangeStart = ts; rangeEnd = null; document.getElementById('btnApplyRange').disabled = true; } 
+    else if (ts < rangeStart) { rangeStart = ts; rangeEnd = null; } 
+    else { rangeEnd = ts; document.getElementById('btnApplyRange').disabled = false; }
+    renderCalendar();
+}
+function applyDateRange() {
+    if (!rangeStart || !rangeEnd) return;
+    finalRangeStart = rangeStart; finalRangeEnd = rangeEnd + (23 * 60 * 60 * 1000) + (59 * 60 * 1000) + 59000; 
+    const startStr = new Date(finalRangeStart).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
+    const endStr = new Date(finalRangeEnd).toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit', year: '2-digit'});
+    document.getElementById('rangeBtnText').innerText = `${startStr} - ${endStr}`;
+    rangeModal.hide(); triggerCalculateStats();
+}
+function cancelDateRange() {
+    if (!finalRangeStart || !finalRangeEnd) { document.getElementById('statsPeriod').value = 'month'; togglePeriodSelector(); }
+}
+
+function triggerCalculateStats() {
+    document.getElementById('loadingOverlay').classList.remove('d-none');
+    setTimeout(() => { calculateStats(); document.getElementById('loadingOverlay').classList.add('d-none'); }, 50);
+}
+
+function calculateActiveAging(range) {
+    try {
+        const now = new Date();
+        const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const weekTs = todayTs - 6 * 86400000;
+        const monthTs = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        const yearTs = new Date(now.getFullYear(), 0, 1).getTime();
+        
+        const sql = "SELECT timestamp FROM orders WHERE status='active'";
+        const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
+        
+        let aTotal=0, aToday=0, aWeek=0, aMonth=0, aYear=0, aPeriod=0;
+        rows.forEach(r => {
+            aTotal++;
+            if (r.timestamp >= todayTs) aToday++;
+            if (r.timestamp >= weekTs) aWeek++;
+            if (r.timestamp >= monthTs) aMonth++;
+            if (r.timestamp >= yearTs) aYear++;
+            if (r.timestamp >= range.startTime && r.timestamp < range.endTime) aPeriod++;
+        });
+
+        document.getElementById('agTotal').innerText = aTotal.toLocaleString('ru-RU');
+        document.getElementById('agToday').innerText = aToday.toLocaleString('ru-RU');
+        document.getElementById('agWeek').innerText = aWeek.toLocaleString('ru-RU');
+        document.getElementById('agMonth').innerText = aMonth.toLocaleString('ru-RU');
+        document.getElementById('agYear').innerText = aYear.toLocaleString('ru-RU');
+        document.getElementById('agPeriod').innerText = aPeriod.toLocaleString('ru-RU');
+    } catch(e) {}
+}
+
+function calculateStats() {
+    const range = getStatsDateRange();
+    
+    // Считаем зависшие
+    calculateActiveAging(range);
+
+    const sql = `SELECT * FROM orders WHERE timestamp >= ${range.startTime} AND timestamp < ${range.endTime} ORDER BY timestamp ASC`;
+    const adSql = `SELECT SUM(amount) as ad_total FROM transactions WHERE type='expense' AND category='Реклама' AND timestamp >= ${range.startTime} AND timestamp < ${range.endTime}`;
+    
+    try {
+        const rows = JSON.parse(window.Android.querySql(DB_NAME, sql));
+        const adResult = JSON.parse(window.Android.querySql(DB_NAME, adSql));
+        const adSpend = Number(adResult[0].ad_total || 0);
+        
+        let countCompleted = 0, countRefused = 0, countCancelled = 0, countActive = 0, totalLeads = rows.length;
+        let total = 0, parts = 0, net = 0;
+        
+        // Корзины чеков
+        let bU5 = 0, b5to8 = 0, b8to10 = 0, b10to20 = 0, bO20 = 0;
+
+        let chartDataMap = {};
+
+        rows.forEach(r => {
+            if (r.status === 'completed') {
+                countCompleted++;
+                total += parseFloat(r.total_sum || 0);
+                parts += parseFloat(r.parts_sum || 0);
+                net += parseFloat(r.net_sum || 0);
+                
+                // Корзины чеков для выполненных
+                let rTot = parseFloat(r.total_sum || 0);
+                if (rTot < 5000) bU5++;
+                else if (rTot < 8000) b5to8++;
+                else if (rTot < 10000) b8to10++;
+                else if (rTot < 20000) b10to20++;
+                else bO20++;
+                
+                // График
+                let d = new Date(r.timestamp);
+                let key = range.chartType === 'daily' ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                if (!chartDataMap[key]) chartDataMap[key] = { period: key, total: 0, parts: 0, net: 0 };
+                chartDataMap[key].total += parseFloat(r.total_sum || 0);
+                chartDataMap[key].parts += parseFloat(r.parts_sum || 0);
+                chartDataMap[key].net += parseFloat(r.net_sum || 0);
+                
+            } else if (r.status === 'refused') {
+                countRefused++;
+                // Для среднего чека отказы учитываются (обычно там чистыми 0 или выезд)
+                net += parseFloat(r.net_sum || 0); 
+            } else if (r.status === 'cancelled') {
+                countCancelled++;
+            } else {
+                countActive++;
+            }
+        });
+
+        // БЛОК 1: Общая воронка (Успех / Отказы+Отмены / В работе)
+        const countFailedTot = countRefused + countCancelled;
+        const perc1Comp = totalLeads > 0 ? Math.round((countCompleted / totalLeads) * 100) : 0;
+        const perc1Fail = totalLeads > 0 ? Math.round((countFailedTot / totalLeads) * 100) : 0;
+        const perc1Act = totalLeads > 0 ? (100 - perc1Comp - perc1Fail) : 0; 
+        document.getElementById('pb1Comp').style.width = perc1Comp + '%'; document.getElementById('pb1Comp').innerText = perc1Comp > 5 ? perc1Comp + '%' : '';
+        document.getElementById('pb1Fail').style.width = perc1Fail + '%'; document.getElementById('pb1Fail').innerText = perc1Fail > 5 ? perc1Fail + '%' : '';
+        document.getElementById('pb1Act').style.width = perc1Act + '%'; document.getElementById('pb1Act').innerText = perc1Act > 5 ? perc1Act + '%' : '';
+
+        // БЛОК 2: Чистая конверсия (только закрытые: Выполнены / Отказ / Отмена)
+        const closedLeads = countCompleted + countRefused + countCancelled;
+        const perc2Comp = closedLeads > 0 ? Math.round((countCompleted / closedLeads) * 100) : 0;
+        const perc2Ref = closedLeads > 0 ? Math.round((countRefused / closedLeads) * 100) : 0;
+        const perc2Canc = closedLeads > 0 ? (100 - perc2Comp - perc2Ref) : 0;
+        document.getElementById('pb2Comp').style.width = perc2Comp + '%'; document.getElementById('pb2Comp').innerText = perc2Comp > 5 ? perc2Comp + '%' : '';
+        document.getElementById('pb2Ref').style.width = perc2Ref + '%'; document.getElementById('pb2Ref').innerText = perc2Ref > 5 ? perc2Ref + '%' : '';
+        document.getElementById('pb2Canc').style.width = perc2Canc + '%'; document.getElementById('pb2Canc').innerText = perc2Canc > 5 ? perc2Canc + '%' : '';
+
+        // БЛОК 3: Корзины
+        const bTot = countCompleted;
+        if (bTot === 0) {
+            document.getElementById('revenueBucketsCard').classList.add('d-none');
+        } else {
+            document.getElementById('revenueBucketsCard').classList.remove('d-none');
+            const pU5 = Math.round((bU5 / bTot) * 100); const p5to8 = Math.round((b5to8 / bTot) * 100);
+            const p8to10 = Math.round((b8to10 / bTot) * 100); const p10to20 = Math.round((b10to20 / bTot) * 100);
+            const pO20 = 100 - pU5 - p5to8 - p8to10 - p10to20;
+
+            const setupBucket = (id, perc) => {
+                const el = document.getElementById('pb3_' + id); const lg = document.getElementById('lg_' + id);
+                el.style.width = perc + '%'; el.innerText = perc > 5 ? perc + '%' : '';
+                if (perc > 0) lg.classList.remove('d-none'); else lg.classList.add('d-none');
+            };
+            setupBucket('u5', pU5); setupBucket('5to8', p5to8); setupBucket('8to10', p8to10); setupBucket('10to20', p10to20); setupBucket('o20', pO20);
+        }
+
+        const cpl = totalLeads > 0 ? (adSpend / totalLeads) : 0;
+        
+        // Средний чек: (чистыми с выполненных и отказов) / (выполненные + отказы)
+        const avgBase = countCompleted + countRefused;
+        const avg = avgBase > 0 ? (net / avgBase) : 0;
+
+        document.getElementById('statAllLeads').innerText = totalLeads.toLocaleString('ru-RU');
+        document.getElementById('statCPL').innerText = Math.round(cpl).toLocaleString('ru-RU') + ' ₽';
+        document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
+        document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
+        document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
+        document.getElementById('statAvg').innerText = Math.round(avg).toLocaleString('ru-RU') + ' ₽';
+
+        // Обновление счетчиков на вкладках аналитики
+        document.getElementById('sc_all').innerText = totalLeads;
+        document.getElementById('sc_completed').innerText = countCompleted;
+        document.getElementById('sc_refused').innerText = countRefused;
+        document.getElementById('sc_cancelled').innerText = countCancelled;
+        document.getElementById('sc_active').innerText = countActive;
+
+        const chartContainerNode = document.getElementById('crmChartContainer');
+        if (!range.showLineChart || Object.keys(chartDataMap).length === 0) {
+            chartContainerNode.classList.add('d-none');
+        } else {
+            chartContainerNode.classList.remove('d-none');
+            let chartArray = Object.values(chartDataMap);
+            document.getElementById('chartTitle').innerText = range.chartType === 'daily' ? 'Динамика прибыли по дням' : 'Динамика прибыли по месяцам';
+            document.getElementById('crmChart').innerHTML = ''; 
+            if (window.Morris) {
+                new Morris.Line({
+                    element: 'crmChart', data: chartArray, xkey: 'period', ykeys: ['total', 'net', 'parts'], labels: ['Выручка', 'Чистая', 'Расход'],
+                    lineColors: ['#0d6efd', '#198754', '#dc3545'], hideHover: 'auto', resize: true, parseTime: false, 
+                    hoverCallback: function (index, options, content, row) {
+                        return `<div class="p-2 fw-bold bg-white shadow-sm border rounded" style="z-index:1000">
+                                    <div class="mb-1 text-dark border-bottom pb-1">${row.period}</div>
+                                    <div style="color: #0d6efd">Выручка: ${Number(row.total).toLocaleString('ru-RU')} ₽</div>
+                                    <div style="color: #198754">Чистая: ${Number(row.net).toLocaleString('ru-RU')} ₽</div>
+                                    <div style="color: #dc3545">Расход: ${Number(row.parts).toLocaleString('ru-RU')} ₽</div>
+                                </div>`;
+                    }
+                });
+            }
+        }
+        
+        loadStatsOrders(true);
+    } catch (e) { console.error("Ошибка аналитики:", e); }
+}
+
+function generateTestData() {
+    if (!confirm("Добавить 10 000 случайных заказов?")) return;
+    const btn = document.getElementById('btnGenerate'); btn.disabled = true; btn.innerText = "Идет генерация...";
+    const names = ["Александр", "Елена", "Максим", "Ольга", "Иван", "Анна", "Сергей", "Наталья"];
+    let totalInserted = 0;
+    
+    function insertBatch() {
+        let sql = "INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp) VALUES ";
+        let values = [];
+        for (let i = 0; i < 500; i++) {
+            const id = Date.now() + totalInserted + i;
+            const street = (typeof SARATOV_STREETS !== 'undefined' && SARATOV_STREETS.length > 0) ? SARATOV_STREETS[Math.floor(Math.random() * SARATOV_STREETS.length)] : "ул. Тестовая";
+            const address = street + ", д. " + Math.floor(Math.random() * 150 + 1);
+            const name = names[Math.floor(Math.random() * names.length)];
+            const phone = "89" + Math.floor(100000000 + Math.random() * 900000000);
+            
+            const total = Math.floor(Math.random() * 250) * 100 + 1000; // от 1k до 26k
+            const parts = Math.floor(Math.random() * 15) * 100;
+            
+            const rand = Math.random();
+            let status = 'completed';
+            if (rand < 0.2) status = 'active'; else if (rand < 0.3) status = 'refused'; else if (rand < 0.4) status = 'cancelled';
+            
+            const ts = Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000); 
+            const closedTs = status !== 'active' ? ts + (86400000 * 2) : 'NULL';
+
+            values.push(`(${id}, '${address}', '${name}', '${phone}', 'Тестовый', ${total}, ${parts}, ${total-parts}, ${ts}, '${status}', ${closedTs})`);
+        }
+        window.Android.executeSql(DB_NAME, sql + values.join(", "));
+        totalInserted += 500;
+        
+        if (totalInserted < 10000) {
+            btn.innerText = `Добавлено: ${totalInserted} / 10000`; setTimeout(insertBatch, 20);
+        } else {
+            btn.disabled = false; btn.innerText = "Сгенерировать 10 000 заказов";
+            updateGlobalCounters(); loadOrders(true);
+            if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
+            alert("Успешно добавлено!");
+        }
+    }
+    insertBatch();
+}
+
+function clearDatabase() {
+    if (!confirm("Удалить тестовые заказы?")) return;
+    window.Android.executeSql(DB_NAME, "DELETE FROM orders WHERE description = 'Тестовый'");
+    updateGlobalCounters(); loadOrders(true);
+    if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
+    alert("Тестовые данные успешно удалены!");
+}
+
+window.addEventListener('DOMContentLoaded', initDb);
 </script>
 </body>
 </html>
