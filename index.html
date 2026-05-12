@@ -48,28 +48,102 @@
 
         .clickable-card { cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
         .clickable-card:hover, .clickable-card:active { border-color: #0d6efd; transform: scale(0.98); }
+        /* Стили для банковской / премиум шапки */
+.crm-header-fin {
+    /* Глубокий современный градиент. Можно поменять цвета на те, что в твоем аппе Финансы */
+    background: linear-gradient(135deg, #141e30 0%, #243b55 100%);
+    color: #ffffff;
+    /* Закругляем только нижние углы, как карточку */
+    border-radius: 0 0 24px 24px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Декоративный блик на фоне для красоты */
+.crm-header-fin::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+}
+
+/* Стеклянные кнопки (Glassmorphism) */
+.fin-btn {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.2s ease-in-out;
+    text-decoration: none;
+}
+
+.fin-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    color: white;
+}
+
+/* Акцентная сумма */
+.fin-amount {
+    font-size: 2.4rem;
+    letter-spacing: -1px;
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Круглая подложка для главной иконки */
+.icon-box-white {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
     </style>
 </head>
 <body>
 
 <div id="mainScreen">
     <div class="container py-3">
-        <div class="d-flex justify-content-between align-items-center mb-2 mt-2">
-                <h5 class="mb-0 fw-bold"><i class="fa-solid fa-toolbox me-2"></i>Рабочие заказы</h5>
-                <div>
-    <button class="btn btn-link text-dark p-0 m-0 me-3" onclick="openMastersModal()">
-        <i class="fa-solid fa-hard-hat fs-4"></i>
-    </button>
-    <button class="btn btn-link text-white p-0 m-0 me-3" onclick="openStatsScreen()">
-        <i class="fa-solid fa-chart-pie fs-4"></i>
-    </button>
-</div>
+        <div class="crm-header-fin p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center position-relative z-1">
+        <div class="d-flex align-items-center">
+            <div class="icon-box-white me-3">
+                <i class="fa-solid fa-toolbox fs-5"></i>
             </div>
-        <div class="crm-header p-4 mb-4 shadow-sm">
-            
-            <p class="mb-1  opacity-75 small">Чистая прибыль (все время)</p>
-            <h2 class="fw-bold mb-0 text-success" id="totalNetProfit">0 ₽</h2>
+            <h5 class="mb-0 fw-bold">Рабочие заказы</h5>
         </div>
+        
+        <div class="d-flex gap-2">
+            <button class="btn fin-btn p-0 m-0" onclick="openMastersModal()" title="Мастера">
+                <i class="fa-solid fa-hard-hat fs-5"></i>
+            </button>
+            <button class="btn fin-btn p-0 m-0" onclick="openStatsScreen()" title="Аналитика">
+                <i class="fa-solid fa-chart-pie fs-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="mt-4 position-relative z-1">
+        <p class="mb-1 opacity-75 small text-uppercase" style="letter-spacing: 0.5px; font-weight: 500;">
+            Чистая прибыль (все время)
+        </p>
+        <h2 class="fw-bold mb-0 fin-amount" id="totalNetProfit">0 ₽</h2>
+    </div>
+</div>
 
         <div class="mb-3 px-1 position-relative">
             <input type="text" id="searchInput" class="form-control form-control-lg shadow-sm border-0 rounded-pill ps-4 fw-bold" placeholder="Поиск..." autocomplete="off" oninput="handleSearch(this.value)">
