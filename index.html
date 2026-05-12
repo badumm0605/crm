@@ -676,6 +676,8 @@ function triggerAndroidPhotoPicker() {
 function onPhotoAttachedFromAndroid(filePath) {
     currentOrderPhotos.push(filePath);
     renderOrderPhotos();
+    // === ДОБАВЛЕНО: Принудительно сохраняем черновик после загрузки фото ===
+    saveDraft();
     // Вызовем умный бекап, раз мы добавили фото
     if (typeof smartAutoBackup === 'function') smartAutoBackup('crm');
 }
@@ -707,7 +709,11 @@ function renderOrderPhotos() {
 function removePhoto(index) {
     currentOrderPhotos.splice(index, 1);
     renderOrderPhotos();
+    
+    // === ДОБАВЛЕНО: Принудительно сохраняем черновик после удаления фото ===
+    saveDraft();
 }
+
 
 
 function loadMasters() {
