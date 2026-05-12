@@ -1085,27 +1085,27 @@ let sql = idInput
     else if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
     if (!document.getElementById('detailScreen').classList.contains('d-none')) closeDetailScreen();
     orderModal.hide(); 
+    // 1. Принудительно и синхронно обновляем списки в памяти
     updateGlobalCounters();
+    loadOrders(true); // <-- скачает свежие данные с новыми фото
+    triggerCalculateStats(); 
     
-    // === ИСПРАВЛЕНИЕ ОБНОВЛЕНИЯ ИНТЕРФЕЙСА ===
-    
-    // 1. БЕЗУСЛОВНО перезагружаем главный список заказов, 
-    // чтобы при возврате на главный экран там были свежие данные.
-    loadOrders(true); 
-    
-    // 2. Если открыта аналитика - пересчитываем её
-    if (!document.getElementById('statsScreen').classList.contains('d-none')) {
-        triggerCalculateStats();
-    }
-    
-    // 3. Если мы сохранили изменения, находясь внутри карточки заказа (detailScreen),
-    // закрываем её, чтобы вернуться в обновленный главный список.
-    if (!document.getElementById('detailScreen').classList.contains('d-none')) {
-        closeDetailScreen();
-    }
-    
-    // 4. Запускаем умный авто-бекап (если он внедрен)
+    // Запускаем бекап
     if (typeof smartAutoBackup === 'function') smartAutoBackup('crm');
+
+    // 2. Безопасная маршрутизация (ИЗБАВИТ ОТ ВЫЛЕТОВ)
+    // Проверяем, откуда мы пришли: из открытой карточки заказа или с главного экрана?
+    const isDetailOpen = !document.getElementById('detailScreen').classList.contains('d-none');
+    
+    if (isDetailOpen) {
+        // Мы редактировали заказ внутри карточки. 
+        // Прыгаем на 2 шага назад по истории: браузер САМ безопасно закроет и модалку, и карточку заказа.
+        window.history.go(-2);
+    } else {
+        // Создавали новый заказ с главного экрана. 
+        // Прыгаем на 1 шаг назад: браузер САМ безопасно закроет только модалку.
+        window.history.back();
+    }
 }
 
 function handleContactSearch(query) {
