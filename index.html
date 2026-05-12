@@ -1607,7 +1607,7 @@ function calculateStats() {
                 statCplEl.classList.add('text-primary');
             } else if (adSpend > 0) {
                 // Заявок 0, но деньги потрачены - подсвечиваем слив бюджета красным
-                statCplEl.innerText = Math.round(adSpend).toLocaleString('ru-RU') + ' ₽ (Слив)';
+                statCplEl.innerText = Math.round(adSpend).toLocaleString('ru-RU') + ' ₽';
                 statCplEl.classList.add('text-danger');
             } else {
                 // И заявок 0, и трат 0
@@ -1624,7 +1624,7 @@ function calculateStats() {
                 statCpaEl.innerText = Math.round(adSpend / countCompleted).toLocaleString('ru-RU') + ' ₽';
                 statCpaEl.classList.add('text-success');
             } else if (adSpend > 0) {
-                statCpaEl.innerText = Math.round(adSpend).toLocaleString('ru-RU') + ' ₽ (Слив)';
+                statCpaEl.innerText = Math.round(adSpend).toLocaleString('ru-RU') + ' ₽';
                 statCpaEl.classList.add('text-danger');
             } else {
                 statCpaEl.innerText = '0 ₽';
