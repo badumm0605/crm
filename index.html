@@ -695,7 +695,7 @@ function renderOrderPhotos() {
         // Используем file:// для отображения локальных файлов в WebView
         html += `
         <div class="position-relative" style="width: 70px; height: 70px;">
-            <img src="${getValidFilePath(path)}" class="img-thumbnail w-100 h-100 object-fit-cover rounded-3 shadow-sm" onclick="window.Android.openImage('${getValidFilePath(path)}')">
+            <img src="file://${getValidFilePath(path)}" class="img-thumbnail w-100 h-100 object-fit-cover rounded-3 shadow-sm" onclick="window.Android.openImage('file://${getValidFilePath(path)}')">
             <button class="btn btn-danger btn-sm position-absolute top-0 end-0 rounded-circle" 
                     style="width: 24px; height: 24px; padding: 0; transform: translate(30%, -30%);" 
                     onclick="removePhoto(${index})">
@@ -943,7 +943,7 @@ try { photos = o.photos ? JSON.parse(o.photos) : []; } catch(e) {}
 if (photos.length > 0) {
     photosBlock.style.display = 'block';
     photosList.innerHTML = photos.map(path => 
-        `<img src="${getValidFilePath(path)}" class="img-thumbnail object-fit-cover rounded-3 shadow-sm" style="width: 80px; height: 80px; cursor: pointer;" onclick="window.Android.openImage('${getValidFilePath(path)}')">`
+        `<img src="file://${getValidFilePath(path)}" class="img-thumbnail object-fit-cover rounded-3 shadow-sm" style="width: 80px; height: 80px; cursor: pointer;" onclick="window.Android.openImage('file://${getValidFilePath(path)}')">`
     ).join('');
 } else {
     photosBlock.style.display = 'none';
