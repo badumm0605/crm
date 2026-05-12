@@ -1167,12 +1167,17 @@ function deleteOrder() {
 }
 
 function saveOrder() {
-    const idInput = document.getElementById('orderId').value; const orderId = idInput ? parseInt(idInput) : Date.now();
-    const address = document.getElementById('orderAddress').value.replace(/'/g, "''"); const client = document.getElementById('orderClient').value.replace(/'/g, "''");
-    const phone = document.getElementById('orderPhone').value.replace(/'/g, "''"); const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
+    const idInput = document.getElementById('orderId').value; 
+    const orderId = idInput ? parseInt(idInput) : Date.now();
+    const address = document.getElementById('orderAddress').value.replace(/'/g, "''"); 
+    const client = document.getElementById('orderClient').value.replace(/'/g, "''");
+    const phone = document.getElementById('orderPhone').value.replace(/'/g, "''"); 
+    const desc = document.getElementById('orderDesc').value.replace(/'/g, "''");
     const warranty = document.getElementById('orderWarranty').value.replace(/'/g, "''");
-    const total = parseFloat(document.getElementById('orderTotal').value) || 0; const parts = parseFloat(document.getElementById('orderParts').value) || 0;
-    const net = total - parts; const status = document.getElementById('orderStatus').value;
+    const total = parseFloat(document.getElementById('orderTotal').value) || 0; 
+    const parts = parseFloat(document.getElementById('orderParts').value) || 0;
+    const net = total - parts; 
+    const status = document.getElementById('orderStatus').value;
     const masterId = parseInt(document.getElementById('orderMaster').value) || 0;
     
     const schedVal = document.getElementById('orderScheduledTime').value;
@@ -1180,17 +1185,21 @@ function saveOrder() {
 
     let closedTs = 'NULL';
     if (status !== 'active' && status !== 'scheduled') {
-        if (currentViewedOrder && currentViewedOrder.status !== 'active' && currentViewedOrder.status !== 'scheduled' && currentViewedOrder.closed_timestamp) closedTs = currentViewedOrder.closed_timestamp;
-        else closedTs = Date.now(); 
+        if (currentViewedOrder && currentViewedOrder.status !== 'active' && currentViewedOrder.status !== 'scheduled' && currentViewedOrder.closed_timestamp) {
+            closedTs = currentViewedOrder.closed_timestamp;
+        } else {
+            closedTs = Date.now(); 
+        }
     }
 
     const ts = idInput ? (currentViewedOrder ? currentViewedOrder.timestamp : Date.now()) : orderId;
 
     const photosJson = JSON.stringify(currentOrderPhotos).replace(/'/g, "''");
 
-let sql = idInput 
-    ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, status='${status}', closed_timestamp=${closedTs}, master_id=${masterId}, scheduled_timestamp=${schedTs}, warranty_period='${warranty}', photos='${photosJson}' WHERE id=${orderId}`
-    : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp, warranty_period, photos) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs}, '${warranty}', '${photosJson}')`;
+    let sql = idInput 
+        ? `UPDATE orders SET address='${address}', client_name='${client}', phone='${phone}', description='${desc}', total_sum=${total}, parts_sum=${parts}, net_sum=${net}, status='${status}', closed_timestamp=${closedTs}, master_id=${masterId}, scheduled_timestamp=${schedTs}, warranty_period='${warranty}', photos='${photosJson}' WHERE id=${orderId}`
+        : `INSERT INTO orders (id, address, client_name, phone, description, total_sum, parts_sum, net_sum, timestamp, status, closed_timestamp, master_id, scheduled_timestamp, warranty_period, photos) VALUES (${orderId}, '${address}', '${client}', '${phone}', '${desc}', ${total}, ${parts}, ${net}, ${ts}, '${status}', ${closedTs}, ${masterId}, ${schedTs}, '${warranty}', '${photosJson}')`;
+    
     window.Android.executeSql(DB_NAME, sql);
     window.Android.executeSql(DB_NAME, `DELETE FROM transactions WHERE source_app='crm' AND note LIKE '[CRM-${orderId}]%'`);
 
@@ -1203,12 +1212,7 @@ let sql = idInput
         if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
     }
     
-    if (!document.getElementById('mainScreen').classList.contains('d-none')) loadOrders(true); 
-    else if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
-    if (!document.getElementById('detailScreen').classList.contains('d-none')) closeDetailScreen();
-    orderModal.hide(); 
     // 1. Принудительно и синхронно обновляем списки в памяти
-    // 1. Синхронно обновляем списки в памяти
     updateGlobalCounters();
     loadOrders(true); // Скачиваем свежие данные с новыми фото
     if (typeof triggerCalculateStats === 'function') triggerCalculateStats(); 
@@ -1217,7 +1221,7 @@ let sql = idInput
     if (typeof smartAutoBackup === 'function') smartAutoBackup('crm');
 
     // === ОЧИСТКА ЧЕРНОВИКА ===
-    const idInput = document.getElementById('orderId').value;
+    // Используем idInput, который уже был объявлен в самом начале функции!
     if (!idInput) {
         localStorage.removeItem('crm_order_draft');
     }
@@ -1249,7 +1253,7 @@ let sql = idInput
         if (window.location.hash === '#modal') {
             window.history.back();
         }
-    }, 100); // Микрозадержка, чтобы не конфликтовать с анимацией Bootstrap
+    }, 100); 
 }
 
 function handleContactSearch(query) {
