@@ -1208,30 +1208,48 @@ let sql = idInput
     if (!document.getElementById('detailScreen').classList.contains('d-none')) closeDetailScreen();
     orderModal.hide(); 
     // 1. Принудительно и синхронно обновляем списки в памяти
+    // 1. Синхронно обновляем списки в памяти
     updateGlobalCounters();
-    loadOrders(true); // <-- скачает свежие данные с новыми фото
-    triggerCalculateStats(); 
+    loadOrders(true); // Скачиваем свежие данные с новыми фото
+    if (typeof triggerCalculateStats === 'function') triggerCalculateStats(); 
     
     // Запускаем бекап
     if (typeof smartAutoBackup === 'function') smartAutoBackup('crm');
 
-    // 2. Безопасная маршрутизация (ИЗБАВИТ ОТ ВЫЛЕТОВ)
-    // Проверяем, откуда мы пришли: из открытой карточки заказа или с главного экрана?
-    const isDetailOpen = !document.getElementById('detailScreen').classList.contains('d-none');
     // === ОЧИСТКА ЧЕРНОВИКА ===
+    const idInput = document.getElementById('orderId').value;
     if (!idInput) {
-        // Если это был новый заказ (без изначального ID), удаляем черновик
         localStorage.removeItem('crm_order_draft');
     }
+
+    // === 2. ЖЕЛЕЗОБЕТОННАЯ МАРШРУТИЗАЦИЯ ===
+    
+    // А) Безопасно закрываем модалку средствами самого Bootstrap
+    try {
+        const modalEl = document.getElementById('orderModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+    } catch(e) { console.error("Ошибка закрытия модалки", e); }
+
+    // Б) Проверяем, были ли мы внутри карточки заказа
+    const detailScreen = document.getElementById('detailScreen');
+    const mainScreen = document.getElementById('mainScreen');
+    const isDetailOpen = detailScreen && !detailScreen.classList.contains('d-none');
+    
     if (isDetailOpen) {
-        // Мы редактировали заказ внутри карточки. 
-        // Прыгаем на 2 шага назад по истории: браузер САМ безопасно закроет и модалку, и карточку заказа.
-        window.history.go(-2);
-    } else {
-        // Создавали новый заказ с главного экрана. 
-        // Прыгаем на 1 шаг назад: браузер САМ безопасно закроет только модалку.
-        window.history.back();
+        // Если да, вручную переключаем экраны (возвращаемся в список)
+        detailScreen.classList.add('d-none');
+        mainScreen.classList.remove('d-none');
     }
+
+    // В) Аккуратно подчищаем историю, только если браузер ДЕЙСТВИТЕЛЬНО запомнил шаг
+    setTimeout(() => {
+        if (window.location.hash === '#modal') {
+            window.history.back();
+        }
+    }, 100); // Микрозадержка, чтобы не конфликтовать с анимацией Bootstrap
 }
 
 function handleContactSearch(query) {
