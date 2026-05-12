@@ -398,6 +398,7 @@
         <div class="modal-content border-0 rounded-top-4" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title fw-bold" id="modalTitle">Заказ</h5>
+                <button class="btn btn-link text-danger btn-sm p-0 ms-3" onclick="clearDraft()">Очистить</button>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -969,19 +970,47 @@ if (photos.length > 0) {
 function closeDetailScreen() { history.back(); }
 
 function showOrderModal() {
-    document.getElementById('orderId').value = ''; document.getElementById('orderAddress').value = '';
-    document.getElementById('orderClient').value = ''; document.getElementById('orderPhone').value = '';
-    document.getElementById('orderDesc').value = ''; document.getElementById('orderTotal').value = '';
-    document.getElementById('orderParts').value = ''; document.getElementById('orderNet').innerText = '0 ₽';
+    // 1. Сначала полностью очищаем все поля (дефолтное состояние)
+    document.getElementById('orderId').value = ''; 
+    document.getElementById('orderAddress').value = '';
+    document.getElementById('orderClient').value = ''; 
+    document.getElementById('orderPhone').value = '';
+    document.getElementById('orderDesc').value = ''; 
+    document.getElementById('orderTotal').value = '';
+    document.getElementById('orderParts').value = ''; 
     document.getElementById('orderWarranty').value = '';
     document.getElementById('orderStatus').value = 'scheduled'; 
     document.getElementById('orderScheduledTime').value = '';
+    document.getElementById('orderNet').innerText = '0 ₽';
     currentOrderPhotos = [];
-    renderOrderPhotos();
+    
     const masterSelect = document.getElementById('orderMaster');
     if(masterSelect && allMasters.length > 0) masterSelect.value = allMasters[allMasters.length-1].id;
+
+    // 2. Пытаемся загрузить черновик
+    const draftStr = localStorage.getItem('crm_order_draft');
+    if (draftStr) {
+        try {
+            const draft = JSON.parse(draftStr);
+            document.getElementById('orderAddress').value = draft.address || '';
+            document.getElementById('orderClient').value = draft.client || '';
+            document.getElementById('orderPhone').value = draft.phone || '';
+            document.getElementById('orderDesc').value = draft.desc || '';
+            document.getElementById('orderTotal').value = draft.total || '';
+            document.getElementById('orderParts').value = draft.parts || '';
+            document.getElementById('orderWarranty').value = draft.warranty || '';
+            if (draft.sched) document.getElementById('orderScheduledTime').value = draft.sched;
+            if (draft.master) document.getElementById('orderMaster').value = draft.master;
+            if (draft.photos) currentOrderPhotos = draft.photos;
+        } catch(e) { console.error("Ошибка чтения черновика", e); }
+    }
+
+    // 3. Пересчитываем итоги и показываем модалку
+    calcNet();
+    renderOrderPhotos();
     
-    orderModal.show(); history.pushState({ page: 'modal' }, "Modal", "#modal");
+    orderModal.show(); 
+    history.pushState({ page: 'modal' }, "Modal", "#modal");
 }
 
 function openEditModal() {
@@ -1096,7 +1125,11 @@ let sql = idInput
     // 2. Безопасная маршрутизация (ИЗБАВИТ ОТ ВЫЛЕТОВ)
     // Проверяем, откуда мы пришли: из открытой карточки заказа или с главного экрана?
     const isDetailOpen = !document.getElementById('detailScreen').classList.contains('d-none');
-    
+    // === ОЧИСТКА ЧЕРНОВИКА ===
+    if (!idInput) {
+        // Если это был новый заказ (без изначального ID), удаляем черновик
+        localStorage.removeItem('crm_order_draft');
+    }
     if (isDetailOpen) {
         // Мы редактировали заказ внутри карточки. 
         // Прыгаем на 2 шага назад по истории: браузер САМ безопасно закроет и модалку, и карточку заказа.
@@ -1528,6 +1561,41 @@ function clearDatabase() {
     const statsScrn = document.getElementById('statsScreen');
     if (statsScrn && !statsScrn.classList.contains('d-none')) triggerCalculateStats();
     alert("Тестовые данные успешно удалены!");
+}
+// Функция сохранения черновика
+function saveDraft() {
+    // Если orderId заполнен, значит мы редактируем существующий заказ. Черновик не трогаем!
+    if (document.getElementById('orderId').value) return;
+
+    const draft = {
+        address: document.getElementById('orderAddress').value,
+        client: document.getElementById('orderClient').value,
+        phone: document.getElementById('orderPhone').value,
+        desc: document.getElementById('orderDesc').value,
+        total: document.getElementById('orderTotal').value,
+        parts: document.getElementById('orderParts').value,
+        warranty: document.getElementById('orderWarranty').value,
+        sched: document.getElementById('orderScheduledTime').value,
+        master: document.getElementById('orderMaster').value,
+        photos: currentOrderPhotos // Фотки тоже сохраняем в черновик!
+    };
+    localStorage.setItem('crm_order_draft', JSON.stringify(draft));
+}
+
+// Вешаем глобальный слушатель на всю модалку. Любое изменение в полях вызовет saveDraft
+document.getElementById('orderModal').addEventListener('input', function(e) {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+        saveDraft();
+    }
+});
+
+// Кнопка для ручного сброса черновика (можно добавить ее в HTML модалки)
+function clearDraft() {
+    if(confirm("Очистить заполненные поля?")) {
+        localStorage.removeItem('crm_order_draft');
+        document.getElementById('orderId').value = ''; 
+        showOrderModal(); // Перезапускаем модалку чистой
+    }
 }
 
 window.addEventListener('DOMContentLoaded', initDb);
