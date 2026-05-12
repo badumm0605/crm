@@ -1574,16 +1574,51 @@ function calculateStats() {
         }
 
         // РАСЧЕТЫ ПОКАЗАТЕЛЕЙ
-        const cpl = totalLeads > 0 ? (adSpend / totalLeads) : 0;
-        const cpa = countCompleted > 0 ? (adSpend / countCompleted) : 0;
         
         // Два средних чека!
         const avgCompleted = countCompleted > 0 ? (netCompleted / countCompleted) : 0;
         const avgTotal = closedLeads > 0 ? (net / closedLeads) : 0;
 
         if(document.getElementById('statAllLeads')) document.getElementById('statAllLeads').innerText = totalLeads.toLocaleString('ru-RU');
-        if(document.getElementById('statCPL')) document.getElementById('statCPL').innerText = Math.round(cpl).toLocaleString('ru-RU') + ' ₽';
-        if(document.getElementById('statCPA')) document.getElementById('statCPA').innerText = Math.round(cpa).toLocaleString('ru-RU') + ' ₽';
+        
+        // Умный расчет CPL (Стоимость заявки)
+        const statCplEl = document.getElementById('statCPL');
+        if (statCplEl) {
+            statCplEl.classList.remove('text-primary', 'text-danger');
+            if (totalLeads > 0) {
+                // Все хорошо, считаем как обычно
+                statCplEl.innerText = Math.round(adSpend / totalLeads).toLocaleString('ru-RU') + ' ₽';
+                statCplEl.classList.add('text-primary');
+            } else if (adSpend > 0) {
+                // Заявок 0, но деньги потрачены - подсвечиваем слив бюджета красным
+                statCplEl.innerText = Math.round(adSpend).toLocaleString('ru-RU') + ' ₽ (Слив)';
+                statCplEl.classList.add('text-danger');
+            } else {
+                // И заявок 0, и трат 0
+                statCplEl.innerText = '0 ₽';
+                statCplEl.classList.add('text-primary');
+            }
+        }
+
+        // Умный расчет CPA (Стоимость выполненного ремонта)
+        const statCpaEl = document.getElementById('statCPA');
+        if (statCpaEl) {
+            statCpaEl.classList.remove('text-success', 'text-danger');
+            if (countCompleted > 0) {
+                statCpaEl.innerText = Math.round(adSpend / countCompleted).toLocaleString('ru-RU') + ' ₽';
+                statCpaEl.classList.add('text-success');
+            } else if (adSpend > 0) {
+                statCpaEl.innerText = Math.round(adSpend).toLocaleString('ru-RU') + ' ₽ (Слив)';
+                statCpaEl.classList.add('text-danger');
+            } else {
+                statCpaEl.innerText = '0 ₽';
+                statCpaEl.classList.add('text-success');
+            }
+        }
+
+        if(document.getElementById('statTotal')) document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statParts')) document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
+        if(document.getElementById('statNet')) document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
         if(document.getElementById('statTotal')) document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
         if(document.getElementById('statParts')) document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
         if(document.getElementById('statNet')) document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
