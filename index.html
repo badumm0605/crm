@@ -988,10 +988,15 @@ function openEditModal() {
     try {
         if (!currentViewedOrder) return;
         const o = currentViewedOrder;
-        document.getElementById('orderId').value = o.id || ''; document.getElementById('orderAddress').value = o.address || '';
-        document.getElementById('orderClient').value = o.client_name || ''; document.getElementById('orderPhone').value = o.phone || '';
-        document.getElementById('orderDesc').value = o.description || ''; document.getElementById('orderTotal').value = o.total_sum || '';
-        document.getElementById('orderParts').value = o.parts_sum || ''; document.getElementById('orderStatus').value = o.status || 'scheduled';
+        
+        document.getElementById('orderId').value = o.id || ''; 
+        document.getElementById('orderAddress').value = o.address || '';
+        document.getElementById('orderClient').value = o.client_name || ''; 
+        document.getElementById('orderPhone').value = o.phone || '';
+        document.getElementById('orderDesc').value = o.description || ''; 
+        document.getElementById('orderTotal').value = o.total_sum || '';
+        document.getElementById('orderParts').value = o.parts_sum || ''; 
+        document.getElementById('orderStatus').value = o.status || 'scheduled';
         document.getElementById('orderMaster').value = o.master_id || 0;
         document.getElementById('orderWarranty').value = o.warranty_period || '';
         
@@ -1004,13 +1009,19 @@ function openEditModal() {
             document.getElementById('orderScheduledTime').value = '';
         }
 
-        calcNet(); orderModal.show();
+        // === ИСПРАВЛЕНИЕ ДЛЯ ФОТОГРАФИЙ ===
+        try {
+            currentOrderPhotos = o.photos ? JSON.parse(o.photos) : [];
+        } catch (e) { 
+            currentOrderPhotos = []; 
+        }
+        renderOrderPhotos(); // Отрисовываем миниатюры в модалке!
+        // ==================================
+
+        calcNet(); 
+        orderModal.show();
         try { history.pushState({ page: 'modal' }, "Modal", "#modal"); } catch(e) {}
-    } catch (e) {}
-    try {
-    currentOrderPhotos = o.photos ? JSON.parse(o.photos) : [];
-} catch (e) { currentOrderPhotos = []; }
-renderOrderPhotos();
+    } catch (e) { console.error(e); }
 }
 
 function calcNet() {
@@ -1069,12 +1080,32 @@ let sql = idInput
         if (total > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('income', ${total}, '${noteCategory}', '[CRM-${orderId}] ${address}', ${Date.now()}, 'crm')`);
         if (parts > 0) window.Android.executeSql(DB_NAME, `INSERT INTO transactions (type, amount, category, note, timestamp, source_app) VALUES ('expense', ${parts}, 'Бизнес (Запчасти)', '[CRM-${orderId}] Запчасти: ${address}', ${Date.now() + 1000}, 'crm')`);
     }
-smartAutoBackup('crm');
-    orderModal.hide(); updateGlobalCounters();
     
     if (!document.getElementById('mainScreen').classList.contains('d-none')) loadOrders(true); 
     else if (!document.getElementById('statsScreen').classList.contains('d-none')) triggerCalculateStats();
     if (!document.getElementById('detailScreen').classList.contains('d-none')) closeDetailScreen();
+    orderModal.hide(); 
+    updateGlobalCounters();
+    
+    // === ИСПРАВЛЕНИЕ ОБНОВЛЕНИЯ ИНТЕРФЕЙСА ===
+    
+    // 1. БЕЗУСЛОВНО перезагружаем главный список заказов, 
+    // чтобы при возврате на главный экран там были свежие данные.
+    loadOrders(true); 
+    
+    // 2. Если открыта аналитика - пересчитываем её
+    if (!document.getElementById('statsScreen').classList.contains('d-none')) {
+        triggerCalculateStats();
+    }
+    
+    // 3. Если мы сохранили изменения, находясь внутри карточки заказа (detailScreen),
+    // закрываем её, чтобы вернуться в обновленный главный список.
+    if (!document.getElementById('detailScreen').classList.contains('d-none')) {
+        closeDetailScreen();
+    }
+    
+    // 4. Запускаем умный авто-бекап (если он внедрен)
+    if (typeof smartAutoBackup === 'function') smartAutoBackup('crm');
 }
 
 function handleContactSearch(query) {
