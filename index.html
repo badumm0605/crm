@@ -988,12 +988,13 @@ window.addEventListener('scroll', () => {
 function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function getValidFilePath(path) {
     if (!path) return '';
-    // Если путь уже начинается с file://, оставляем как есть. 
-    // Если нет - добавляем.
-    if (path.startsWith('file://')) {
-        return path;
-    }
-    return 'file://' + path;
+    
+    // 1. Убираем старый file://, если он сохранился в базе
+    let cleanPath = path.replace('file://', '');
+    
+    // 2. Возвращаем ВИРТУАЛЬНУЮ ссылку
+    // Получится что-то вроде http://local-media.app/data/user/0/com.example...
+    return 'http://local-media.app' + cleanPath;
 }
 function openDetailScreen(orderId) {
     currentViewedOrder = allOrders.find(o => o.id === orderId);
