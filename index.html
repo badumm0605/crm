@@ -989,12 +989,16 @@ function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function getValidFilePath(path) {
     if (!path) return '';
     
-    // 1. Убираем старый file://, если он сохранился в базе
+    // Очищаем от старого протокола
     let cleanPath = path.replace('file://', '');
     
-    // 2. Возвращаем ВИРТУАЛЬНУЮ ссылку
-    // Получится что-то вроде http://local-media.app/data/user/0/com.example...
-    return 'http://local-media.app' + cleanPath;
+    // Гарантируем, что путь начинается со слеша (например: /data/user/...)
+    if (!cleanPath.startsWith('/')) {
+        cleanPath = '/' + cleanPath;
+    }
+    
+    // Используем HTTPS, чтобы Android не ругался на безопасность
+    return 'https://local.media.app' + cleanPath;
 }
 function openDetailScreen(orderId) {
     currentViewedOrder = allOrders.find(o => o.id === orderId);
