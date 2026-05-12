@@ -306,7 +306,7 @@
 
         <div class="row g-3">
             <div class="col-12">
-                <div class="card border-0 shadow-sm bg-success text-white" style="background: linear-gradient(135deg, #198754 0%, #146c43 100%);">
+                <div class="card border-0 shadow-sm bg-success text-white" id="statNetCard" style="background: linear-gradient(135deg, #198754 0%, #146c43 100%);">
                     <div class="card-body p-4">
                         <small class="opacity-75 d-block mb-1">Чистая прибыль</small>
                         <h2 class="fw-bold mb-0" id="statNet">0 ₽</h2>
@@ -867,8 +867,24 @@ function loadOrders(reset = false) {
     if (reset) {
         currentOffset = 0; hasMoreData = true; allOrders = []; document.getElementById('ordersList').innerHTML = ''; updateGlobalCounters();
         try {
+            // Берем прибыль со всех заказов
             const sumResult = JSON.parse(window.Android.querySql(DB_NAME, "SELECT SUM(net_sum) as total FROM orders WHERE status IN ('completed', 'warranty', 'refused', 'cancelled')"));
-            if(document.getElementById('totalNetProfit')) document.getElementById('totalNetProfit').innerText = Number(sumResult[0].total || 0).toLocaleString('ru-RU') + ' ₽';
+            // Берем ВСЕ расходы на рекламу за всё время
+            const adResult = JSON.parse(window.Android.querySql(DB_NAME, "SELECT SUM(amount) as ad_total FROM transactions WHERE type='expense' AND account_id IN (SELECT id FROM accounts WHERE is_target=1)"));
+            
+            // Вычисляем глобальный итог
+            const allTimeNet = Number(sumResult[0].total || 0) - Number(adResult[0].ad_total || 0);
+            const mainNetEl = document.getElementById('totalNetProfit');
+            
+            if (mainNetEl) {
+                if (allTimeNet >= 0) {
+                    mainNetEl.innerText = Number(allTimeNet).toLocaleString('ru-RU') + ' ₽';
+                    mainNetEl.classList.remove('text-danger');
+                } else {
+                    mainNetEl.innerText = '- ' + Math.abs(allTimeNet).toLocaleString('ru-RU') + ' ₽';
+                    mainNetEl.classList.add('text-danger'); // Делаем текст красным
+                }
+            }
         } catch (e) {}
     }
     if (!hasMoreData || isLoading) return;
@@ -1618,7 +1634,23 @@ function calculateStats() {
 
         if(document.getElementById('statTotal')) document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
         if(document.getElementById('statParts')) document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
-        if(document.getElementById('statNet')) document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
+        // Считаем РЕАЛЬНУЮ чистую прибыль (Выручка - Запчасти - Реклама)
+        const finalNet = net - adSpend;
+        
+        const statNetCard = document.getElementById('statNetCard');
+        const statNetEl = document.getElementById('statNet');
+        
+        if (statNetEl && statNetCard) {
+            if (finalNet >= 0) {
+                // Плюс или ноль: Зеленый градиент
+                statNetEl.innerText = Number(finalNet).toLocaleString('ru-RU') + ' ₽';
+                statNetCard.style.background = 'linear-gradient(135deg, #198754 0%, #146c43 100%)'; 
+            } else {
+                // Минус (Убыток): Красный градиент и знак минуса
+                statNetEl.innerText = '- ' + Math.abs(finalNet).toLocaleString('ru-RU') + ' ₽';
+                statNetCard.style.background = 'linear-gradient(135deg, #dc3545 0%, #a71d2a 100%)'; 
+            }
+        }
         if(document.getElementById('statTotal')) document.getElementById('statTotal').innerText = Number(total).toLocaleString('ru-RU') + ' ₽';
         if(document.getElementById('statParts')) document.getElementById('statParts').innerText = Number(parts).toLocaleString('ru-RU') + ' ₽';
         if(document.getElementById('statNet')) document.getElementById('statNet').innerText = Number(net).toLocaleString('ru-RU') + ' ₽';
