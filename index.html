@@ -1928,10 +1928,50 @@ function renderGoalScreen() {
                     `;
                 } else {
                     // --- ЛОГИКА: ЕСЛИ ОТСТАЕМ ОТ ГРАФИКА ---
-                    const reqOrdersScaling = reqDaily / (avgCheck - avgCPA);
-                    const reqDailySpend = reqOrdersScaling * avgCPA;
+                    
+                    // 1. СЦЕНАРИЙ: МАСШТАБ (Реклама)
+                    let scenario1Html = '';
+                    if (avgCheck <= avgCPA) {
+                        scenario1Html = `
+                            <span class="small text-danger fw-bold d-block mb-1">Масштабирование убыточно!</span>
+                            <span class="small text-muted lh-sm d-block">
+                                Твой средний чек (${formatMoney(avgCheck)}) меньше или равен стоимости привлечения клиента (${formatMoney(avgCPA)}). Если ты увеличишь бюджет сейчас, ты просто быстрее сольешь деньги. Сначала реши проблему с чеком!
+                            </span>`;
+                    } else {
+                        const reqOrdersScaling = reqDaily / (avgCheck - avgCPA);
+                        const reqDailySpend = reqOrdersScaling * avgCPA;
+                        scenario1Html = `
+                            <span class="small text-muted d-block mb-2 lh-sm">Увеличь бюджет, чтобы получать больше заявок в день.</span>
+                            <div class="d-flex justify-content-between small border-top pt-1">
+                                <span>Бюджет: <b>${Math.round(avgDailySpend)}</b> → <b class="text-primary">${Math.round(reqDailySpend)}</b> <small>₽/дн</small></span>
+                                <span>Заказы: <b>${avgOrdersPerDay.toFixed(1)}</b> → <b class="text-primary">${reqOrdersScaling.toFixed(1)}</b></span>
+                            </div>`;
+                    }
+
+                    // 2. СЦЕНАРИЙ: ЧЕК (Доп. продажи)
                     const reqCheck = (reqDaily / avgOrdersPerDay) + avgCPA;
+                    let scenario2Html = `
+                        <span class="small text-muted d-block mb-2 lh-sm">Оставь бюджет прежним, но бери за работу больше.</span>
+                        <div class="d-flex justify-content-between small border-top pt-1">
+                            <span>Средний чек: <b>${formatMoney(avgCheck)}</b> → <b class="text-success">${formatMoney(reqCheck)}</b></span>
+                        </div>`;
+
+                    // 3. СЦЕНАРИЙ: CPA (Конверсия)
                     const reqCPA = avgCheck - (reqDaily / avgOrdersPerDay);
+                    let scenario3Html = '';
+                    if (reqCPA < 0) {
+                        scenario3Html = `
+                            <span class="small text-danger fw-bold d-block mb-1">Сценарий математически невозможен!</span>
+                            <span class="small text-muted lh-sm d-block">
+                                Даже если клиенты станут абсолютно бесплатными (CPA = 0 ₽), текущего чека и количества заявок не хватит для достижения цели. Выбирай Сценарий 1 или 2.
+                            </span>`;
+                    } else {
+                        scenario3Html = `
+                            <span class="small text-muted d-block mb-2 lh-sm">Снизь стоимость клиента за счет лучшей конверсии.</span>
+                            <div class="d-flex justify-content-between small border-top pt-1">
+                                <span>Цена клиента: <b>${formatMoney(avgCPA)}</b> → <b style="color: #fd7e14">${formatMoney(reqCPA)}</b></span>
+                            </div>`;
+                    }
 
                     adviceHtml = `
                         <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
@@ -1942,31 +1982,21 @@ function renderGoalScreen() {
                         <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #0d6efd !important;">
                             <div class="card-body p-2 px-3">
                                 <small class="text-primary fw-bold d-block mb-1">Сценарий 1: Масштабирование</small>
-                                <span class="small text-muted d-block mb-2 lh-sm">Увеличь бюджет, чтобы получать больше заявок в день.</span>
-                                <div class="d-flex justify-content-between small border-top pt-1">
-                                    <span>Бюджет: <b>${Math.round(avgDailySpend)}</b> → <b class="text-primary">${Math.round(reqDailySpend)}</b> <small>₽/дн</small></span>
-                                    <span>Заказы: <b>${avgOrdersPerDay.toFixed(1)}</b> → <b class="text-primary">${reqOrdersScaling.toFixed(1)}</b></span>
-                                </div>
+                                ${scenario1Html}
                             </div>
                         </div>
                         
                         <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #198754 !important;">
                             <div class="card-body p-2 px-3">
                                 <small class="text-success fw-bold d-block mb-1">Сценарий 2: Рост чека</small>
-                                <span class="small text-muted d-block mb-2 lh-sm">Оставь бюджет прежним, но бери за работу больше.</span>
-                                <div class="d-flex justify-content-between small border-top pt-1">
-                                    <span>Средний чек: <b>${formatMoney(avgCheck)}</b> → <b class="text-success">${formatMoney(reqCheck)}</b></span>
-                                </div>
+                                ${scenario2Html}
                             </div>
                         </div>
                         
                         <div class="card border-0 bg-white shadow-sm mb-3" style="border-left: 4px solid #fd7e14 !important;">
                             <div class="card-body p-2 px-3">
                                 <small class="fw-bold d-block mb-1" style="color: #fd7e14">Сценарий 3: Эффективность</small>
-                                <span class="small text-muted d-block mb-2 lh-sm">Снизь стоимость клиента за счет лучшей конверсии.</span>
-                                <div class="d-flex justify-content-between small border-top pt-1">
-                                    <span>Цена клиента: <b>${formatMoney(avgCPA)}</b> → <b style="color: #fd7e14">${formatMoney(reqCPA)}</b></span>
-                                </div>
+                                ${scenario3Html}
                             </div>
                         </div>`;
                 }
