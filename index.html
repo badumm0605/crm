@@ -1904,10 +1904,6 @@ function renderGoalScreen() {
                                 <small class="text-primary fw-bold d-block mb-1">Сценарий 1: Масштабирование</small>
                                 <span class="small text-muted d-block mb-2">Увеличь бюджет, чтобы получать больше заявок в день.</span>
                                 <div class="d-flex justify-content-between small border-top pt-1">
-                         <span class="small text-muted d-block mb-2 lh-sm">
-                                    Если чек и конверсия останутся прежними, тебе нужно тратить на рекламу на <b>+${formatMoney(diffSpend)}</b> больше каждый день. 
-                                    Это принесет примерно <b>+${extraOrdersNeeded.toFixed(1)}</b> дополнительных заказов в день.
-                                </span>
                                     <span>Бюджет: <b>${Math.round(avgDailySpend)}</b> → <b class="text-primary">${Math.round(reqDailySpend)}</b> <small>₽/дн</small></span>
                                     <span>Заказы: <b>${avgOrdersPerDay.toFixed(1)}</b> → <b class="text-primary">${reqOrdersScaling.toFixed(1)}</b></span>
                                 </div>
@@ -1917,10 +1913,6 @@ function renderGoalScreen() {
                         <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #198754 !important;">
                             <div class="card-body p-2 px-3">
                                 <small class="text-success fw-bold d-block mb-1">Сценарий 2: Рост чека</small>
-                        <span class="small text-muted d-block mb-2 lh-sm">
-                                    Оставляем бюджет на рекламу и количество заказов старыми. 
-                                    Просто продавай доп. услуги или подними цены так, чтобы чистая прибыль с каждого заказа выросла на <b>+${formatMoney(diffCheck)}</b>.
-                                </span>
                                 <span class="small text-muted d-block mb-2">Оставь бюджет прежним, но бери за работу больше.</span>
                                 <div class="d-flex justify-content-between small border-top pt-1">
                                     <span>Средний чек: <b>${formatMoney(avgCheck)}</b> → <b class="text-success">${formatMoney(reqCheck)}</b></span>
@@ -1931,10 +1923,6 @@ function renderGoalScreen() {
                         <div class="card border-0 bg-white shadow-sm mb-3" style="border-left: 4px solid #fd7e14 !important;">
                             <div class="card-body p-2 px-3">
                                 <small class="fw-bold d-block mb-1" style="color: #fd7e14">Сценарий 3: Эффективность</small>
-                        <span class="small text-muted d-block mb-2 lh-sm">
-                                    Цены и бюджет не трогаем. Тебе нужно снизить стоимость клиента (CPA) на <b>${formatMoney(diffCPA)}</b>. 
-                                    Для этого лучше обрабатывай звонки и сокращай количество "Отмен" и платных "Отказов". Меньше пустых выездов = дешевле клиент.
-                                </span>
                                 <span class="small text-muted d-block mb-2">Снизь стоимость клиента за счет лучшей конверсии.</span>
                                 <div class="d-flex justify-content-between small border-top pt-1">
                                     <span>Цена клиента: <b>${formatMoney(avgCPA)}</b> → <b style="color: #fd7e14">${formatMoney(reqCPA)}</b></span>
