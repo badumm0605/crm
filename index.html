@@ -1823,9 +1823,9 @@ function renderGoalScreen() {
             const goals = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM goals WHERE is_active=1 ORDER BY id DESC LIMIT 1"));
             
             if (goals.length === 0) {
-                // Форма создания (без изменений)
+                // ФОРМА СОЗДАНИЯ ЦЕЛИ
                 body.innerHTML = `
-                    <p class="text-muted small mb-4">Установите цель, и система рассчитает необходимые показатели на основе истории вашей работы.</p>
+                    <p class="text-muted small mb-4">Установите финансовую цель, и система рассчитает необходимые показатели на основе истории вашей работы.</p>
                     <div class="mb-3">
                         <label class="form-label text-muted fw-bold small mb-1">На что копим?</label>
                         <input type="text" id="newGoalTitle" class="form-control" placeholder="Например: Новый инструмент">
@@ -1843,10 +1843,13 @@ function renderGoalScreen() {
             } else {
                 const goal = goals[0];
                 const now = Date.now();
+                
+                // 1. Точка отсчета
                 const firstOrderRes = JSON.parse(window.Android.querySql(DB_NAME, "SELECT MIN(timestamp) as first_ts FROM orders"));
                 const firstTs = firstOrderRes[0].first_ts || goal.start_timestamp; 
                 const totalBusinessDays = Math.max(1, Math.ceil((now - firstTs) / 86400000));
 
+                // 2. ПРОГРЕСС ЦЕЛИ
                 const earnedRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT SUM(net_sum) as total FROM orders WHERE status IN ('completed', 'warranty', 'refused', 'cancelled') AND closed_timestamp >= ${goal.start_timestamp}`));
                 const spentRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT SUM(amount) as total FROM transactions WHERE type='expense' AND account_id IN (SELECT id FROM accounts WHERE is_target=1) AND timestamp >= ${goal.start_timestamp}`));
                 
@@ -1858,19 +1861,27 @@ function renderGoalScreen() {
                 if (daysLeft < 1) daysLeft = 1;
                 const reqDaily = amountLeft / daysLeft;
 
+                // 3. АНАЛИЗ ВСЕЙ ИСТОРИИ
                 const hEarnedRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT SUM(net_sum) as total FROM orders WHERE status IN ('completed', 'warranty', 'refused', 'cancelled')`));
                 const hSpentRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT SUM(amount) as total FROM transactions WHERE type='expense' AND account_id IN (SELECT id FROM accounts WHERE is_target=1)`));
+                
                 const hClosedRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT COUNT(*) as c FROM orders WHERE status IN ('completed', 'warranty', 'refused', 'cancelled')`));
+                const hCompletedOnlyRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT COUNT(*) as c FROM orders WHERE status='completed'`));
+                const hLeadsRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT COUNT(*) as c FROM orders WHERE status != 'warranty'`));
                 
                 const hTotalEarned = Number(hEarnedRes[0].total) || 0;
                 const hTotalSpent = Number(hSpentRes[0].total) || 0;
                 const hTotalClosed = Number(hClosedRes[0].c) || 0;
+                const hTotalCompleted = Number(hCompletedOnlyRes[0].c) || 0;
+                const hTotalLeads = Number(hLeadsRes[0].c) || 0;
                 
+                // СРЕДНИЕ ПОКАЗАТЕЛИ
                 const avgDailyProfit = (hTotalEarned - hTotalSpent) / totalBusinessDays;
                 const avgDailySpend = hTotalSpent / totalBusinessDays;
                 const avgCPA = hTotalClosed > 0 ? (hTotalSpent / hTotalClosed) : 0;
                 const avgCheck = hTotalClosed > 0 ? (hTotalEarned / hTotalClosed) : 0;
                 const avgOrdersPerDay = hTotalClosed / totalBusinessDays;
+                const avgConversion = hTotalLeads > 0 ? (hTotalCompleted / hTotalLeads) * 100 : 0;
 
                 let adviceHtml = '';
                 const formatMoney = (n) => Math.round(n).toLocaleString('ru-RU') + ' ₽';
@@ -1880,17 +1891,46 @@ function renderGoalScreen() {
                 } else if (hTotalClosed === 0) {
                     adviceHtml = `<div class="alert alert-warning small border-0 shadow-sm">Нет данных для анализа.</div>`;
                 } else if (avgDailyProfit >= reqDaily) {
-                    adviceHtml = `<div class="alert alert-success small fw-bold border-0 shadow-sm"><i class="fa-solid fa-fire me-2"></i>Темп в норме. Продолжай в том же духе!</div>`;
+                    
+                    // --- НОВАЯ ЛОГИКА: ЕСЛИ ИДЕМ С ОПЕРЕЖЕНИЕМ ---
+                    const estDays = Math.ceil(amountLeft / avgDailyProfit); // За сколько дней закроем реально
+                    const daysSaved = daysLeft - estDays; // Сколько дней сэкономим
+                    const savedText = daysSaved > 0 ? ` (на <b>${daysSaved}</b> дн. раньше дедлайна)` : '';
+                    
+                    adviceHtml = `
+                        <div class="alert alert-success small border-0 shadow-sm mb-3">
+                            <i class="fa-solid fa-rocket me-2"></i>Идем с опережением! При текущем темпе цель будет достигнута через <b>${estDays}</b> дн.${savedText}.
+                        </div>
+                        
+                        <h6 class="fw-bold text-dark mb-2" style="font-size: 0.8rem;">Твои текущие показатели:</h6>
+                        
+                        <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #0d6efd !important;">
+                            <div class="card-body p-2 px-3 d-flex justify-content-between align-items-center">
+                                <span class="small text-muted fw-bold">Прибыль (чистыми)</span>
+                                <span class="fw-bold text-primary">${formatMoney(avgDailyProfit)}<small class="text-muted fw-normal"> / дн.</small></span>
+                            </div>
+                        </div>
+                        <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #198754 !important;">
+                            <div class="card-body p-2 px-3 d-flex justify-content-between align-items-center">
+                                <span class="small text-muted fw-bold">Средний чек</span>
+                                <span class="fw-bold text-success">${formatMoney(avgCheck)}</span>
+                            </div>
+                        </div>
+                        <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #fd7e14 !important;">
+                            <div class="card-body p-2 px-3 d-flex justify-content-between align-items-center">
+                                <span class="small text-muted fw-bold">Цена клиента (CPA)</span>
+                                <span class="fw-bold" style="color: #fd7e14">${formatMoney(avgCPA)}</span>
+                            </div>
+                        </div>
+                        <div class="text-center mt-2">
+                            <span class="badge bg-light text-secondary border">Твоя текущая конверсия: ${Math.round(avgConversion)}%</span>
+                        </div>
+                    `;
                 } else {
-                    // РАСЧЕТЫ БЫЛО / СТАЛО
-                    // 1. Масштаб
+                    // --- ЛОГИКА: ЕСЛИ ОТСТАЕМ ОТ ГРАФИКА ---
                     const reqOrdersScaling = reqDaily / (avgCheck - avgCPA);
                     const reqDailySpend = reqOrdersScaling * avgCPA;
-                    
-                    // 2. Чек
                     const reqCheck = (reqDaily / avgOrdersPerDay) + avgCPA;
-                    
-                    // 3. Эффективность (CPA)
                     const reqCPA = avgCheck - (reqDaily / avgOrdersPerDay);
 
                     adviceHtml = `
@@ -1902,7 +1942,7 @@ function renderGoalScreen() {
                         <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #0d6efd !important;">
                             <div class="card-body p-2 px-3">
                                 <small class="text-primary fw-bold d-block mb-1">Сценарий 1: Масштабирование</small>
-                                <span class="small text-muted d-block mb-2">Увеличь бюджет, чтобы получать больше заявок в день.</span>
+                                <span class="small text-muted d-block mb-2 lh-sm">Увеличь бюджет, чтобы получать больше заявок в день.</span>
                                 <div class="d-flex justify-content-between small border-top pt-1">
                                     <span>Бюджет: <b>${Math.round(avgDailySpend)}</b> → <b class="text-primary">${Math.round(reqDailySpend)}</b> <small>₽/дн</small></span>
                                     <span>Заказы: <b>${avgOrdersPerDay.toFixed(1)}</b> → <b class="text-primary">${reqOrdersScaling.toFixed(1)}</b></span>
@@ -1913,7 +1953,7 @@ function renderGoalScreen() {
                         <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #198754 !important;">
                             <div class="card-body p-2 px-3">
                                 <small class="text-success fw-bold d-block mb-1">Сценарий 2: Рост чека</small>
-                                <span class="small text-muted d-block mb-2">Оставь бюджет прежним, но бери за работу больше.</span>
+                                <span class="small text-muted d-block mb-2 lh-sm">Оставь бюджет прежним, но бери за работу больше.</span>
                                 <div class="d-flex justify-content-between small border-top pt-1">
                                     <span>Средний чек: <b>${formatMoney(avgCheck)}</b> → <b class="text-success">${formatMoney(reqCheck)}</b></span>
                                 </div>
@@ -1923,7 +1963,7 @@ function renderGoalScreen() {
                         <div class="card border-0 bg-white shadow-sm mb-3" style="border-left: 4px solid #fd7e14 !important;">
                             <div class="card-body p-2 px-3">
                                 <small class="fw-bold d-block mb-1" style="color: #fd7e14">Сценарий 3: Эффективность</small>
-                                <span class="small text-muted d-block mb-2">Снизь стоимость клиента за счет лучшей конверсии.</span>
+                                <span class="small text-muted d-block mb-2 lh-sm">Снизь стоимость клиента за счет лучшей конверсии.</span>
                                 <div class="d-flex justify-content-between small border-top pt-1">
                                     <span>Цена клиента: <b>${formatMoney(avgCPA)}</b> → <b style="color: #fd7e14">${formatMoney(reqCPA)}</b></span>
                                 </div>
@@ -1943,8 +1983,10 @@ function renderGoalScreen() {
                             <div class="progress-bar ${progressPerc >= 100 ? 'bg-success' : 'bg-warning text-dark'} fw-bold" style="width: ${progressPerc}%">${progressPerc}%</div>
                         </div>
                     </div>
+                    <div class="p-3 bg-light rounded-3 border mb-3">
                         <small class="text-muted d-block mb-2 text-center">Анализ за ${totalBusinessDays} дн. работы:</small>
                         ${adviceHtml}
+                    </div>
                     <button class="btn btn-outline-danger w-100 fw-bold btn-sm rounded-pill" onclick="closeGoal(${goal.id})">Сбросить цель</button>
                 `;
             }
