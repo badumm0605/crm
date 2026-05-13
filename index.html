@@ -118,30 +118,48 @@
 
 <div id="mainScreen">
     <div class="container py-3">
-        <div class="crm-header-fin p-4 mb-4">
+      <div class="crm-header-fin p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center position-relative z-1">
-       
         
-            <div class="d-flex gap-1"> <button class="btn p-0 m-0 text-secondary opacity-75" onclick="window.location.href='help.html'" title="Как пользоваться?">
-                <i class="fa-regular fa-circle-question fs-5"></i>
-            </button>
-            <button class="btn fin-btn p-0 m-0 text-warning" onclick="openGoalModal()" title="Финансовая цель">
-                <i class="fa-solid fa-bullseye fs-5"></i>
-            </button>
-            <button class="btn fin-btn p-0 m-0" onclick="openMastersModal()" title="Мастера">
-                <i class="fa-solid fa-hard-hat fs-5"></i>
-            </button>
+        <div></div> 
+        
+        <div class="d-flex align-items-center gap-3"> 
+            
             <button class="btn fin-btn p-0 m-0" onclick="openStatsScreen()" title="Аналитика">
-                <i class="fa-solid fa-chart-pie fs-5"></i>
+                <i class="fa-solid fa-chart-pie fs-4 text-dark"></i>
             </button>
+
+            <div class="dropdown">
+                <button class="btn fin-btn p-0 m-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Меню">
+                    <i class="fa-solid fa-gear fs-4 text-secondary"></i>
+                </button>
+                
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2" style="border-radius: 12px; min-width: 200px;">
+                    <li>
+                        <a class="dropdown-item py-3 fw-bold" href="#" onclick="openGoalModal(); return false;">
+                            <i class="fa-solid fa-bullseye text-warning fs-5 me-3" style="width: 20px; text-align: center;"></i>Бизнес-цель
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-3 fw-bold" href="#" onclick="openMastersModal(); return false;">
+                            <i class="fa-solid fa-hard-hat text-secondary fs-5 me-3" style="width: 20px; text-align: center;"></i>Мои мастера
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider opacity-25"></li>
+                    <li>
+                        <a class="dropdown-item py-3 text-muted" href="help.html">
+                            <i class="fa-regular fa-circle-question fs-5 me-3" style="width: 20px; text-align: center;"></i>Как пользоваться?
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
         </div>
     </div>
 
     <div class="mt-4 position-relative z-1">
-        <p class="mb-1  text-uppercase" style="letter-spacing: 0.5px; font-weight: 500;">
-            <h5 class="mb-0 fw-bold">Рабочие заказы</h5>
-        </p>  
-         <p class="mb-1 opacity-75 small text-uppercase" style="letter-spacing: 0.5px; font-weight: 500;">
+        <h5 class="mb-3 fw-bold text-dark text-uppercase" style="letter-spacing: 0.5px;">Рабочие заказы</h5>
+        <p class="mb-1 opacity-75 small text-uppercase" style="letter-spacing: 0.5px; font-weight: 500;">
             Чистая прибыль (все время)
         </p>
         <h2 class="fw-bold mb-0 fin-amount" id="totalNetProfit">0 ₽</h2>
