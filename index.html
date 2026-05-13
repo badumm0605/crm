@@ -1948,6 +1948,30 @@ function renderGoalScreen() {
         }
     }, 100);
 }
+function saveNewGoal() {
+    const title = document.getElementById('newGoalTitle').value.trim().replace(/'/g, "''");
+    const amount = parseFloat(document.getElementById('newGoalAmount').value);
+    const dateVal = document.getElementById('newGoalDate').value;
+    
+    if (!title || !amount || !dateVal) {
+        alert("Заполните все поля!"); return;
+    }
+    
+    // Конец выбранного дня: 23:59:59
+    const deadlineTs = new Date(dateVal).getTime() + (23 * 60 * 60 * 1000) + (59 * 60 * 1000);
+    const startTs = Date.now();
+    
+    if (deadlineTs <= startTs) {
+        alert("Дата должна быть в будущем!"); return;
+    }
+
+    try {
+        window.Android.executeSql(DB_NAME, `INSERT INTO goals (title, target_amount, start_timestamp, deadline_timestamp) VALUES ('${title}', ${amount}, ${startTs}, ${deadlineTs})`);
+        renderGoalScreen(); // Перерисовываем на дашборд
+    } catch(e) {
+        alert("Ошибка создания цели");
+    }
+}
 function closeGoal(id) {
     if (confirm("Вы уверены, что хотите завершить эту цель?")) {
         window.Android.executeSql(DB_NAME, `UPDATE goals SET is_active=0 WHERE id=${id}`);
