@@ -1943,10 +1943,8 @@ function renderGoalScreen() {
                             <div class="progress-bar ${progressPerc >= 100 ? 'bg-success' : 'bg-warning text-dark'} fw-bold" style="width: ${progressPerc}%">${progressPerc}%</div>
                         </div>
                     </div>
-                    <div class="bg-light rounded-3 border mb-3">
                         <small class="text-muted d-block mb-2 text-center">Анализ за ${totalBusinessDays} дн. работы:</small>
                         ${adviceHtml}
-                    </div>
                     <button class="btn btn-outline-danger w-100 fw-bold btn-sm rounded-pill" onclick="closeGoal(${goal.id})">Сбросить цель</button>
                 `;
             }
