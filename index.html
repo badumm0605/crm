@@ -1832,12 +1832,12 @@ function renderGoalScreen() {
                 const goal = goals[0];
                 const now = Date.now();
                 
-                // 1. Точка отсчета: дата самой первой заявки
+                // 1. Точка отсчета
                 const firstOrderRes = JSON.parse(window.Android.querySql(DB_NAME, "SELECT MIN(timestamp) as first_ts FROM orders"));
                 const firstTs = firstOrderRes[0].first_ts || goal.start_timestamp; 
                 const totalBusinessDays = Math.max(1, Math.ceil((now - firstTs) / 86400000));
 
-                // 2. ПРОГРЕСС ЦЕЛИ (Считаем с даты старта самой цели)
+                // 2. ПРОГРЕСС ЦЕЛИ
                 const earnedRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT SUM(net_sum) as total FROM orders WHERE status IN ('completed', 'warranty', 'refused', 'cancelled') AND closed_timestamp >= ${goal.start_timestamp}`));
                 const spentRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT SUM(amount) as total FROM transactions WHERE type='expense' AND account_id IN (SELECT id FROM accounts WHERE is_target=1) AND timestamp >= ${goal.start_timestamp}`));
                 
@@ -1849,13 +1849,11 @@ function renderGoalScreen() {
                 if (daysLeft < 1) daysLeft = 1;
                 const reqDaily = amountLeft / daysLeft;
 
-                // 3. АНАЛИЗ ВСЕЙ ИСТОРИИ (Синхронизируем с аналитикой)
+                // 3. АНАЛИЗ ВСЕЙ ИСТОРИИ
                 const hEarnedRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT SUM(net_sum) as total FROM orders WHERE status IN ('completed', 'warranty', 'refused', 'cancelled')`));
                 const hSpentRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT SUM(amount) as total FROM transactions WHERE type='expense' AND account_id IN (SELECT id FROM accounts WHERE is_target=1)`));
                 
-                // ИСПРАВЛЕНИЕ: Считаем ВСЕ закрытые чеки (как в аналитике), а не только completed
                 const hClosedRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT COUNT(*) as c FROM orders WHERE status IN ('completed', 'warranty', 'refused', 'cancelled')`));
-                // Для конверсии отдельно считаем чистые ремонты и все лиды
                 const hCompletedOnlyRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT COUNT(*) as c FROM orders WHERE status='completed'`));
                 const hLeadsRes = JSON.parse(window.Android.querySql(DB_NAME, `SELECT COUNT(*) as c FROM orders WHERE status != 'warranty'`));
                 
@@ -1865,16 +1863,13 @@ function renderGoalScreen() {
                 const hTotalCompleted = Number(hCompletedOnlyRes[0].c) || 0;
                 const hTotalLeads = Number(hLeadsRes[0].c) || 0;
                 
-                // СРЕДНИЕ ПОКАЗАТЕЛИ (Теперь сойдутся с аналитикой)
+                // СРЕДНИЕ ПОКАЗАТЕЛИ
                 const avgDailyProfit = (hTotalEarned - hTotalSpent) / totalBusinessDays;
                 const avgDailySpend = hTotalSpent / totalBusinessDays;
                 
-                // CPA и Средний чек теперь делим на hTotalClosed (все оплаченные выезды)
                 const avgCPA = hTotalClosed > 0 ? (hTotalSpent / hTotalClosed) : 0;
                 const avgCheck = hTotalClosed > 0 ? (hTotalEarned / hTotalClosed) : 0;
                 const avgOrdersPerDay = hTotalClosed / totalBusinessDays;
-                
-                // Конверсия в успешный ремонт
                 const avgConversion = hTotalLeads > 0 ? (hTotalCompleted / hTotalLeads) * 100 : 0;
 
                 let adviceHtml = '';
@@ -1887,35 +1882,55 @@ function renderGoalScreen() {
                 } else if (avgDailyProfit >= reqDaily) {
                     adviceHtml = `<div class="alert alert-success small fw-bold border-0 shadow-sm"><i class="fa-solid fa-fire me-2"></i>Исторический темп (${formatMoney(avgDailyProfit)}/дн) выше требуемого. Продолжай в том же духе!</div>`;
                 } else {
-                    // РАСЧЕТ ДЕЛЬТЫ
+                    // РАСЧЕТ ДЕЛЬТЫ (с деталями)
                     const reqTotalOrders = reqDaily / (avgCheck - avgCPA);
                     const diffSpend = (reqTotalOrders * avgCPA) - avgDailySpend;
+                    const extraOrdersNeeded = reqTotalOrders - avgOrdersPerDay; // Сколько доп. заказов принесет бюджет
+                    
                     const diffCheck = (reqDaily / avgOrdersPerDay) + avgCPA - avgCheck;
                     const diffCPA = avgCPA - (avgCheck - (reqDaily / avgOrdersPerDay));
 
                     adviceHtml = `
-                        <p class="text-muted small fw-bold mb-2">Нужно: ${formatMoney(reqDaily)}/дн (Твоя норма: ${formatMoney(avgDailyProfit)})</p>
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                            <div>
+                                <small class="text-muted d-block lh-1">Твоя норма</small>
+                                <span class="fw-bold fs-6">${formatMoney(avgDailyProfit)}<small class="text-muted fw-normal">/дн</small></span>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-primary d-block lh-1 fw-bold">Нужно делать</small>
+                                <span class="fw-bold fs-6 text-primary">${formatMoney(reqDaily)}<small class="text-muted fw-normal">/дн</small></span>
+                            </div>
+                        </div>
                         
                         <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #0d6efd !important;">
                             <div class="card-body p-2 px-3">
-                                <small class="text-primary fw-bold d-block mb-1">Масштаб (Реклама)</small>
-                                <span class="small text-muted d-block mb-1">Трать на рекламу на <b>+${formatMoney(diffSpend)}</b> больше в день.</span>
-                                <span class="badge bg-light text-secondary border">Сейчас тратишь: ${formatMoney(avgDailySpend)} / дн.</span>
+                                <small class="text-primary fw-bold d-block mb-1">Сценарий 1: Масштаб (Залить деньгами)</small>
+                                <span class="small text-muted d-block mb-2 lh-sm">
+                                    Если чек и конверсия останутся прежними, тебе нужно тратить на рекламу на <b>+${formatMoney(diffSpend)}</b> больше каждый день. 
+                                    Это принесет примерно <b>+${extraOrdersNeeded.toFixed(1)}</b> дополнительных заказов в день.
+                                </span>
+                                <span class="badge bg-light text-secondary border">Текущий бюджет: ${formatMoney(avgDailySpend)} / дн.</span>
                             </div>
                         </div>
                         
                         <div class="card border-0 bg-white shadow-sm mb-2" style="border-left: 4px solid #198754 !important;">
                             <div class="card-body p-2 px-3">
-                                <small class="text-success fw-bold d-block mb-1">Мастерство (Чек)</small>
-                                <span class="small text-muted d-block mb-1">Подними прибыль с заказа на <b>+${formatMoney(diffCheck)}</b>.</span>
-                                <span class="badge bg-light text-secondary border">Твой текущий чек: ${formatMoney(avgCheck)}</span>
+                                <small class="text-success fw-bold d-block mb-1">Сценарий 2: Мастерство (Расти в чеке)</small>
+                                <span class="small text-muted d-block mb-2 lh-sm">
+                                    Оставляем бюджет на рекламу и количество заказов старыми. 
+                                    Просто продавай доп. услуги или подними цены так, чтобы чистая прибыль с каждого заказа выросла на <b>+${formatMoney(diffCheck)}</b>.
+                                </span>
+                                <span class="badge bg-light text-secondary border">Твой текущий средний чек: ${formatMoney(avgCheck)}</span>
                             </div>
                         </div>
                         
                         <div class="card border-0 bg-white shadow-sm mb-3" style="border-left: 4px solid #fd7e14 !important;">
                             <div class="card-body p-2 px-3">
-                                <small class="fw-bold d-block mb-1" style="color: #fd7e14">Эффективность (Конверсия)</small>
-                                <span class="small text-muted d-block mb-1">Снизь CPA на <b>${formatMoney(diffCPA)}</b> за счет лучшей продажи.</span>
+                                <small class="fw-bold d-block mb-1" style="color: #fd7e14">Сценарий 3: Эффективность (Меньше отказов)</small>
+                                <span class="small text-muted d-block mb-2 lh-sm">
+                                    Цены и бюджет не трогаем. Тебе нужно снизить стоимость клиента (CPA) на <b>${formatMoney(diffCPA)}</b>. 
+                                    Для этого лучше обрабатывай звонки и сокращай количество "Отмен" и платных "Отказов". Меньше пустых выездов = дешевле клиент.
+                                </span>
                                 <span class="badge bg-light text-secondary border text-wrap text-start lh-sm">
                                     Сейчас клиент стоит ${formatMoney(avgCPA)} при конверсии ${Math.round(avgConversion)}%
                                 </span>
