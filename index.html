@@ -142,6 +142,11 @@
                 
                 <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2" style="border-radius: 12px; min-width: 200px;">
                     <li>
+    <a class="dropdown-item py-3 fw-bold text-primary" href="#" onclick="exportCrmData(); return false;">
+        <i class="fa-solid fa-file-export fs-5 me-3" style="width: 20px; text-align: center;"></i>Экспорт данных CRM
+    </a>
+</li>
+                    <li>
                         <a class="dropdown-item py-3 fw-bold" href="#" onclick="openGoalModal(); return false;">
                             <i class="fa-solid fa-bullseye text-warning fs-5 me-3" style="width: 20px; text-align: center;"></i>Бизнес-цель
                         </a>
@@ -2077,6 +2082,51 @@ function closeGoal(id) {
     if (confirm("Вы уверены, что хотите завершить эту цель?")) {
         window.Android.executeSql(DB_NAME, `UPDATE goals SET is_active=0 WHERE id=${id}`);
         renderGoalScreen(); // Перерисовываем на стартовый экран
+    }
+}
+
+    function exportCrmData() {
+    if (!window.Android || !window.Android.querySql) {
+        alert("Ошибка: Мост Android недоступен.");
+        return;
+    }
+    
+    try {
+        // 1. Извлекаем все заказы и всех мастеров
+        const orders = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM orders ORDER BY id ASC"));
+        const masters = JSON.parse(window.Android.querySql(DB_NAME, "SELECT * FROM masters ORDER BY id ASC"));
+        
+        // 2. Формируем единый объект данных
+        const exportData = {
+            sourceApp: "com.kontach.crm",
+            exportTimestamp: Date.now(),
+            tables: {
+                orders: orders,
+                masters: masters
+            }
+        };
+        
+        // 3. Переводим в красивую строку JSON
+        const jsonString = JSON.stringify(exportData, null, 2);
+        const fileName = `crm_export_${Date.now()}.json`;
+        
+        // 4. Используем мост для сохранения файла в песочницу
+        // Если у тебя в Android-мосте метод называется по-другому, поменяй имя (например, KontachAPI.saveTextFile)
+        if (window.Android.saveTextFile) {
+            window.Android.saveTextFile(fileName, jsonString);
+        } else if (window.KontachAPI && window.KontachAPI.saveTextFile) {
+            window.KontachAPI.saveTextFile(fileName, jsonString);
+        } else {
+            // Альтернативный вариант, если метод сохранения не проброшен напрямую — вывод лога для копирования
+            console.log(jsonString);
+            alert("Файл не сохранен. Данные выведены в консоль сборщика.");
+            return;
+        }
+        
+        alert(`Данные CRM успешно экспортированы в файл:\n${fileName}\n\nВы сможете забрать его через файловый менеджер из папки песочницы приложения crm.`);
+    } catch (e) {
+        console.error(e);
+        alert("Ошибка при экспорте данных: " + e.message);
     }
 }
 window.addEventListener('DOMContentLoaded', initDb);
